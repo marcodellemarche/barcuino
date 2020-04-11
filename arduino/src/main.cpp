@@ -133,7 +133,7 @@ void setup()
   // initialize sensors and set resolution
   sensors.begin();
   sensors.setResolution(tempSensor1, tempSensorResolution);
-  sensors.setResolution(tempSensor2, tempSensorResolution);
+  //sensors.setResolution(tempSensor2, tempSensorResolution);
 
   // Start the Serial communication to send messages to the computer
   Serial.begin(115200); 
@@ -146,7 +146,7 @@ void setup()
   webSocket.begin();
   webSocket.onEvent(webSocketEvent);
 
-  WiFi.setSleep(false);
+  //WiFi.setSleep(false);
   WiFi.mode(WIFI_AP);
   WiFi.softAPConfig(local_ip, gateway, netmask);
   WiFi.softAP(mySsid.c_str(), myPassword.c_str());

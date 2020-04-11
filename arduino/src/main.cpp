@@ -1,23 +1,25 @@
 #include <Arduino.h>
-#include <ESP8266WiFi.h>
-#include <ESP8266WebServer.h>
+#include <WiFi.h>
+#include <WiFiServer.h>
+#include <WebServer.h>
 #include <WebSocketsServer.h>
 #include <Servo.h>
 #include <LedController.h>
 #include <math.h>
 #include <DallasTemperature.h>
+#include <analogWrite.h>
 
 // PIN declaration
-#define LEFT_MOTOR D8
-#define RIGHT_MOTOR D7
-#define EJECT_SERVO D4
+#define LEFT_MOTOR 35
+#define RIGHT_MOTOR 33
+#define EJECT_SERVO 34
 
-#define LED_RGB_RED D1
-#define LED_RGB_GREEN D6
-#define LED_RGB_BLUE D5
-#define LED_BACK D0
+#define LED_RGB_RED 22
+#define LED_RGB_GREEN 21
+#define LED_RGB_BLUE 17
+#define LED_BACK 16
 
-#define TEMP_SENSORS_BUS D3
+#define TEMP_SENSORS_BUS 32
 
 // temp sensor
 OneWire oneWire(TEMP_SENSORS_BUS);
@@ -29,7 +31,7 @@ int tempSensorResolution = 10;
 
 #define MAX_ANALOG_WRITE 1023
 
-ESP8266WebServer server;
+WebServer server;
 WebSocketsServer webSocket = WebSocketsServer(81);
 
 // Global variables
@@ -144,10 +146,10 @@ void setup()
   webSocket.begin();
   webSocket.onEvent(webSocketEvent);
 
-  WiFi.setSleepMode(WIFI_NONE_SLEEP);
+  WiFi.setSleep(false);
   WiFi.mode(WIFI_AP);
   WiFi.softAPConfig(local_ip, gateway, netmask);
-  WiFi.softAP(mySsid, myPassword);
+  WiFi.softAP(mySsid.c_str(), myPassword.c_str());
 
   // setup finished, switch on red led
   ledRgbRed.on();
@@ -225,8 +227,8 @@ String setMotorsSpeedFromPad(double degrees, double distance)
 String setMotorsSpeed(int left, int right)
 {
   if ((0 <= left && left <= MAX_ANALOG_WRITE) && (0 <= right && right <= MAX_ANALOG_WRITE)) {
-    analogWrite(LEFT_MOTOR, left);
-    analogWrite(RIGHT_MOTOR, right);
+    analogWrite(LEFT_MOTOR, left, 255U);
+    analogWrite(RIGHT_MOTOR, right, 255U);
     return "OK";
   }
   else {

@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <LedController.h>
+#include <analogWrite.h>
 
 #define MAX_INTENSITY_RED 700
 #define MAX_INTENSITY_GREEN 800
@@ -72,7 +73,7 @@ void LedController::setIntensity(int intensity) {
         return;
         break;
     }
-    analogWrite(_pin, intensity);
+    analogWrite(_pin, intensity, 255U);
     isOn = intensity > 0 ? true : false;
   }
 }

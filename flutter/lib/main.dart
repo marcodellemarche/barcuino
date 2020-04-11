@@ -1,4 +1,5 @@
 import 'package:barkino/widgets/direction_controller.dart';
+import 'package:control_pad/models/gestures.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:gateway/gateway.dart';
@@ -195,9 +196,31 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void _onPadToggle(double degrees, double normalizedDistance) {
+  void _onDirectionChanged(double degrees, double normalizedDistance) {
     int degreesInt = degrees.floor();
     double distanceShort = (normalizedDistance * 10).floor() / 10;
+    webSocket.send('#setMotorsSpeedFromPad;$degreesInt;$distanceShort;\n');
+  }
+
+  void _onPadButtonPressed(int buttonPressed, Gestures gesture) {
+    double distanceShort = 1;
+    int degreesInt;
+    switch (buttonPressed) {
+      case ButtonPressed.LEFT:
+        degreesInt = 270;
+        break;
+      case ButtonPressed.UPWARD:
+        degreesInt = 0;
+        break;
+      case ButtonPressed.RIGHT:
+        degreesInt = 90;
+        break;
+      case ButtonPressed.STOP:
+        degreesInt = 0;
+        distanceShort = 0;
+        break;
+      default:
+    }
     webSocket.send('#setMotorsSpeedFromPad;$degreesInt;$distanceShort;\n');
   }
 
@@ -255,8 +278,9 @@ class _MyHomePageState extends State<MyHomePage> {
               ],
             ),
             DirectionController(
-              onDirectionChanged: _onPadToggle,
+              onDirectionChanged: _onDirectionChanged,
               controllerType: controllerType,
+              onPadButtonPressed: _onPadButtonPressed,
             ),
             RaisedButton(
               child: Text(

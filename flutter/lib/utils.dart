@@ -2,6 +2,13 @@ import 'package:flutter/material.dart';
 
 enum ConfirmAction { CANCEL, ACCEPT }
 
+class ButtonPressed {
+  static const RIGHT = 0;
+  static const STOP = 1;
+  static const LEFT = 2;
+  static const UPWARD = 3;
+}
+
 class Utils {
 // Alert async, with title, message and Ok button.
 // Can be closed by user clicking anywhere

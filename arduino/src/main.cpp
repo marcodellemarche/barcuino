@@ -178,26 +178,28 @@ double absPro(double x)
 
 int getLeftMotorValueNew(double degrees, double distance)
 {
-  double result = 0;
+  double speedResult = 0;
   if (degrees >= 0 && degrees <= 180) {
-    result = maxSpeed;
+    speedResult = maxSpeed;
   }
   else {
-    result = maxSpeed * absPro(cos(radians(degrees)));
+    speedResult = maxSpeed * absPro(cos(radians(degrees)));
   }
-  return (int) (result * distance) * (1 - minMotorSpeed / maxSpeed) + minMotorSpeed;
+  int result = speedResult * distance;
+  return result > minMotorSpeed ? result : 0;
 }
 
 int getRightMotorValueNew(double degrees, double distance)
 {
-  double result = 0;
+  double speedResult = 0;
   if (degrees >= 0 && degrees <= 180) {
-    result = absPro(cos(radians(degrees)));
+    speedResult = maxSpeed * absPro(cos(radians(degrees)));
   }
   else {
-    result = maxSpeed;
+    speedResult = maxSpeed;
   }
-  return (int) (result * distance) * (1 - minMotorSpeed / maxSpeed) + minMotorSpeed;
+  int result = speedResult * distance;
+  return result > minMotorSpeed ? result : 0;
 }
 
 String setMotorsSpeedFromPad(double degrees, double distance)
@@ -451,7 +453,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
       }
     }
   }
-  
 }
 
 

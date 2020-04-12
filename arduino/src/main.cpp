@@ -24,8 +24,9 @@
 // temp sensor
 OneWire oneWire(TEMP_SENSORS_BUS);
 DallasTemperature sensors(&oneWire);
-DeviceAddress tempSensor1 = { 0x28, 0xAA, 0x2C, 0xCA, 0x4F, 0x14, 0x01, 0x91 };
-DeviceAddress tempSensor2 = { 0x28, 0xAA, 0xD8, 0xDD, 0x4F, 0x14, 0x01, 0x96 };
+DeviceAddress emptyAddress = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+DeviceAddress tempSensor1 = {0x28, 0xAA, 0x2C, 0xCA, 0x4F, 0x14, 0x01, 0x91};
+DeviceAddress tempSensor2 = {0x28, 0xAA, 0xD8, 0xDD, 0x4F, 0x14, 0x01, 0x96};
 
 int tempSensorResolution = 10;
 
@@ -43,12 +44,11 @@ LedController ledRgbGreen;
 LedController ledBack;
 
 double maxSpeed = 1023;
-double minMotorSpeed = 200;  // sotto questa velocità i motori fischiano ma non si muove
+double minMotorSpeed = 200; // sotto questa velocità i motori fischiano ma non si muove
 double maxTurningSpeed = 1023;
 // WiFiServer wifiServer(80);
 unsigned long previousHealtCheck = 0;
-unsigned long maxTimeInterval = 5000; // 5 seconds 
-
+unsigned long maxTimeInterval = 5000; // 5 seconds
 
 // functions declaration
 void stopMotors();
@@ -58,16 +58,16 @@ void serialFlush();
 void checkHealthCheckTime();
 String getValue(String data, char separator, int index);
 String ejectPastura();
-void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length);
+void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length);
 
-String myPassword = "ciaociao";
-String mySsid = "BarkiFi";
+const char *myPassword = "ciaociao";
+const char *mySsid = "BarkiFi";
 
 // IPAddress local_ip(192,168,1,4);
 // IPAddress gateway(192,168,1,1);
-IPAddress local_ip(192,168,4,1);
-IPAddress gateway(192,168,4,1);
-IPAddress netmask(255,255,255,0);
+IPAddress local_ip(192, 168, 4, 1);
+IPAddress gateway(192, 168, 4, 1);
+IPAddress netmask(255, 255, 255, 0);
 
 char webpage[] PROGMEM = R"=====(
 <html>
@@ -107,7 +107,11 @@ char webpage[] PROGMEM = R"=====(
 
 void setup()
 {
-  // put your setup code here, to run once:
+  // Start the Serial communication to send messages to the computer
+  Serial.begin(115200);
+  delay(500);
+
+  Serial.println("Step 0 ok");
 
   // set pinMode
   pinMode(LED_BUILTIN, OUTPUT);
@@ -119,47 +123,62 @@ void setup()
   digitalWrite(RIGHT_MOTOR, LOW);
   digitalWrite(LEFT_MOTOR, LOW);
 
+  Serial.println("Step 1 ok");
+
   // create leds
   ledBack.attach(LED_BACK, UNDEFINED);
   ledRgbBlue.attach(LED_RGB_BLUE, BLUE);
   ledRgbRed.attach(LED_RGB_RED, RED);
   ledRgbGreen.attach(LED_RGB_GREEN, GREEN);
 
+  Serial.println("Step 2 ok");
+
   // initialize servo
   ejectServo.attach(EJECT_SERVO);
   delay(15);
   ejectServo.write(0);
+
+  Serial.println("Step 3 ok");
 
   // initialize sensors and set resolution
   sensors.begin();
   sensors.setResolution(tempSensor1, tempSensorResolution);
   //sensors.setResolution(tempSensor2, tempSensorResolution);
 
-  // Start the Serial communication to send messages to the computer
-  Serial.begin(115200); 
-  delay(5000);
-
-  server.on("/", [] () {
-    server.send_P(200, "text/html", webpage);  
-  });
-  server.begin();
-  webSocket.begin();
-  webSocket.onEvent(webSocketEvent);
+  Serial.println("Step 4 ok");
 
   //WiFi.setSleep(false);
   WiFi.mode(WIFI_AP);
+  WiFi.softAP(mySsid, myPassword);
   WiFi.softAPConfig(local_ip, gateway, netmask);
-  WiFi.softAP(mySsid.c_str(), myPassword.c_str());
+
+  Serial.println("Step 5 ok");
+
+  webSocket.begin();
+  webSocket.onEvent(webSocketEvent);
+
+  Serial.println("Step 6 ok");
+
+  server.on("/", []() {
+    server.send_P(200, "text/html", webpage);
+  });
+  Serial.println("Step 7.1 ok");
+  server.begin();
+
+  Serial.println("Step 7 ok");
 
   // setup finished, switch on red led
   ledRgbRed.on();
+
+  Serial.println("Step 8 ok");
 }
 
 void loop()
 {
   webSocket.loop();
   server.handleClient();
-  if(Serial.available() > 0){
+  if (Serial.available() > 0)
+  {
     char c[] = {(char)Serial.read()};
     webSocket.broadcastTXT(c, sizeof(c));
   }
@@ -181,10 +200,12 @@ double absPro(double x)
 int getLeftMotorValueNew(double degrees, double distance)
 {
   double speedResult = 0;
-  if (degrees >= 0 && degrees <= 180) {
+  if (degrees >= 0 && degrees <= 180)
+  {
     speedResult = maxSpeed;
   }
-  else {
+  else
+  {
     speedResult = maxSpeed * absPro(cos(radians(degrees)));
   }
   int result = speedResult * distance;
@@ -194,10 +215,12 @@ int getLeftMotorValueNew(double degrees, double distance)
 int getRightMotorValueNew(double degrees, double distance)
 {
   double speedResult = 0;
-  if (degrees >= 0 && degrees <= 180) {
+  if (degrees >= 0 && degrees <= 180)
+  {
     speedResult = maxSpeed * absPro(cos(radians(degrees)));
   }
-  else {
+  else
+  {
     speedResult = maxSpeed;
   }
   int result = speedResult * distance;
@@ -206,18 +229,24 @@ int getRightMotorValueNew(double degrees, double distance)
 
 String setMotorsSpeedFromPad(double degrees, double distance)
 {
-  if (distance > 0) {
+  if (distance > 0)
+  {
     int left = getLeftMotorValueNew(degrees, distance);
     int right = getRightMotorValueNew(degrees, distance);
-    Serial.print("degrees: "); Serial.println(degrees);
-    Serial.print("SX: "); Serial.println(left);
-    Serial.print("DX: "); Serial.println(right);
-    Serial.print("Distance: "); Serial.println(distance);
+    Serial.print("degrees: ");
+    Serial.println(degrees);
+    Serial.print("SX: ");
+    Serial.println(left);
+    Serial.print("DX: ");
+    Serial.println(right);
+    Serial.print("Distance: ");
+    Serial.println(distance);
 
     setMotorsSpeed(left, right);
     return "OK";
   }
-  else {
+  else
+  {
     stopMotors();
     Serial.println("Distance 0. Motors stopped");
     return "Distance 0. Motors stopped";
@@ -226,30 +255,36 @@ String setMotorsSpeedFromPad(double degrees, double distance)
 
 String setMotorsSpeed(int left, int right)
 {
-  if ((0 <= left && left <= MAX_ANALOG_WRITE) && (0 <= right && right <= MAX_ANALOG_WRITE)) {
+  if ((0 <= left && left <= MAX_ANALOG_WRITE) && (0 <= right && right <= MAX_ANALOG_WRITE))
+  {
     analogWrite(LEFT_MOTOR, left, 255U);
     analogWrite(RIGHT_MOTOR, right, 255U);
     return "OK";
   }
-  else {
+  else
+  {
     Serial.println("Not valid values");
     return "Error";
   }
 }
 
-void stopMotors() {
-  setMotorsSpeed(0,0);
+void stopMotors()
+{
+  setMotorsSpeed(0, 0);
 }
 
-String ejectPastura() {
-  if(ejectServo.attached()) {
+String ejectPastura()
+{
+  if (ejectServo.attached())
+  {
     ejectServo.write(90);
     delay(500);
     ejectServo.write(0);
     Serial.println("Pastura ejected");
     return "OK";
   }
-  else {
+  else
+  {
     Serial.println("Servo not attached!");
     return "Error!";
   }
@@ -282,16 +317,21 @@ void serialFlush()
 }
 
 // Check if Health Check time has been triggered. If so, the server is no more active
-void checkHealthCheckTime() {
-  if (previousHealtCheck > 0) { // don't check if alarm was already triggered or at the startup
-    if (millis() - previousHealtCheck > maxTimeInterval) {
+void checkHealthCheckTime()
+{
+  if (previousHealtCheck > 0)
+  {
+    // don't check if alarm was already triggered or at the startup
+    if (millis() - previousHealtCheck > maxTimeInterval)
+    {
       Serial.println("Server is dead! HealtCheck timer triggered.");
       previousHealtCheck = 0;
     }
   }
 }
 
-void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
+void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
+{
   if (type == WStype_CONNECTED)
   {
     char payload[] = {"Hi! My name is Barkino."};
@@ -302,17 +342,20 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
     Serial.println("WebSocket client disconnected, stopping motors");
     stopMotors();
   }
-  else if (type == WStype_ERROR) {
+  else if (type == WStype_ERROR)
+  {
     Serial.println("WebSocket client error, stopping motors");
     stopMotors();
   }
-  else if (type == WStype_TEXT) {
+  else if (type == WStype_TEXT)
+  {
     String serialData = String((char *)payload);
-    if (serialData.charAt(0) == '#') {
+    if (serialData.charAt(0) == '#')
+    {
       serialData = serialData.substring(1);
       // uint16_t command = (uint16_t) strtol((const char *) &payload[1], NULL, 10);
       // String command = (String) strtol((const char *) &payload[0], NULL, 10);
-      
+
       // String serialData = Serial.readStringUntil('!');
       serialData.trim();
       Serial.println("****************************");
@@ -389,48 +432,57 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
           Serial.println("Switched on!");
         }
       }
-      else if (command == "sensors") {
+      else if (command == "sensors")
+      {
         bool goOn = true;
         String type = getValue(serialData, commandSeparator, 1);
-        uint8_t* sensor; // selected sensor address
+        uint8_t *sensor = emptyAddress; // selected sensor address
         String result;
 
         if (type == "1")
           sensor = tempSensor1;
         else if (type == "2")
           sensor = tempSensor2;
-        else {
-            // command error
-            result = "Sensor type not found!";
-            goOn = false;
+        else
+        {
+          // command error
+          result = "Sensor type not found!";
+          goOn = false;
         }
 
-        if (goOn) {
+        if (goOn)
+        {
           String function = getValue(serialData, commandSeparator, 2); //getTemp or setRes
-          if (function == "getTemp") {
+          if (function == "getTemp")
+          {
             sensors.requestTemperaturesByAddress(sensor);
             float temp = sensors.getTempC(sensor);
             result = "#getTemp;" + String(temp);
           }
-          else if (function == "setRes") {
+          else if (function == "setRes")
+          {
             String value = getValue(serialData, commandSeparator, 3); // value for setRes
             int newResolution = value.toInt();
 
-            if (newResolution >= 9 && newResolution <= 11) {
+            if (newResolution >= 9 && newResolution <= 11)
+            {
               sensors.setResolution(sensor, newResolution);
-              Serial.print("Resolution set to: ");Serial.println(newResolution);
+              Serial.print("Resolution set to: ");
+              Serial.println(newResolution);
               result = "Ok!";
             }
-            else {
+            else
+            {
               // resolution not supported
               result = "Resolution not supported!";
               goOn = false;
             }
           }
-          else {
-              // function error
-              result = "Function not valid!";
-              goOn = false;
+          else
+          {
+            // function error
+            result = "Function not valid!";
+            goOn = false;
           }
         }
         Serial.println(result);
@@ -441,7 +493,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         Serial.println("HealthCheck received, server is on.");
         // Save the last time healtcheck was received
         previousHealtCheck = millis();
-        
+
         // Do what you have to do when server gets lost
         stopMotors();
 
@@ -456,5 +508,3 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
     }
   }
 }
-
-

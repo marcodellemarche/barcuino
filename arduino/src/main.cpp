@@ -147,9 +147,14 @@ void setup()
 
   Serial.println("Step 4 ok");
 
-  //WiFi.setSleep(false);
+  WiFi.persistent(false); 
+  // workaround DHCP crash on ESP32 when AP Mode!!!
+  // https://github.com/espressif/arduino-esp32/issues/2025#issuecomment-562848209
   WiFi.mode(WIFI_AP);
   WiFi.softAP(mySsid, myPassword);
+  delay(1000); 
+  // workaround DHCP crash on ESP32 when AP Mode!!! Non servirebbe se funzionasse WiFi.persistent(false)
+  // https://github.com/espressif/arduino-esp32/issues/2025#issuecomment-544131287
   WiFi.softAPConfig(local_ip, gateway, netmask);
 
   Serial.println("Step 5 ok");

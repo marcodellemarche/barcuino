@@ -50,16 +50,6 @@ double maxTurningSpeed = 1023;
 unsigned long previousHealtCheck = 0;
 unsigned long maxTimeInterval = 5000; // 5 seconds
 
-// functions declaration
-void stopMotors();
-String setMotorsSpeed(int left, int right);
-void handleDataReceived(char *dataStr);
-void serialFlush();
-void checkHealthCheckTime();
-String getValue(String data, char separator, int index);
-String ejectPastura();
-void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length);
-
 const char *myPassword = "ciaociao";
 const char *mySsid = "BarkiFi";
 
@@ -105,101 +95,9 @@ char webpage[] PROGMEM = R"=====(
 </html>
 )=====";
 
-void setup()
-{
-  // Start the Serial communication to send messages to the computer
-  Serial.begin(115200);
-  delay(500);
-
-  Serial.println("Step 0 ok");
-
-  // set pinMode
-  pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(RIGHT_MOTOR, OUTPUT);
-  pinMode(LEFT_MOTOR, OUTPUT);
-
-  // initialize pins values
-  digitalWrite(LED_BUILTIN, HIGH);
-  digitalWrite(RIGHT_MOTOR, LOW);
-  digitalWrite(LEFT_MOTOR, LOW);
-
-  Serial.println("Step 1 ok");
-
-  // create leds
-  ledBack.attach(LED_BACK, UNDEFINED);
-  ledRgbBlue.attach(LED_RGB_BLUE, BLUE);
-  ledRgbRed.attach(LED_RGB_RED, RED);
-  ledRgbGreen.attach(LED_RGB_GREEN, GREEN);
-
-  Serial.println("Step 2 ok");
-
-  // initialize servo
-  ejectServo.attach(EJECT_SERVO);
-  delay(15);
-  ejectServo.write(0);
-
-  Serial.println("Step 3 ok");
-
-  // initialize sensors and set resolution
-  sensors.begin();
-  sensors.setResolution(tempSensor1, tempSensorResolution);
-  //sensors.setResolution(tempSensor2, tempSensorResolution);
-
-  Serial.println("Step 4 ok");
-
-  WiFi.persistent(false); 
-  // workaround DHCP crash on ESP32 when AP Mode!!!
-  // https://github.com/espressif/arduino-esp32/issues/2025#issuecomment-562848209
-  WiFi.mode(WIFI_AP);
-  WiFi.softAP(mySsid, myPassword);
-  delay(1000); 
-  // workaround DHCP crash on ESP32 when AP Mode!!! Non servirebbe se funzionasse WiFi.persistent(false)
-  // https://github.com/espressif/arduino-esp32/issues/2025#issuecomment-544131287
-  WiFi.softAPConfig(local_ip, gateway, netmask);
-
-  Serial.println("Step 5 ok");
-
-  webSocket.begin();
-  webSocket.onEvent(webSocketEvent);
-
-  Serial.println("Step 6 ok");
-
-  server.on("/", []() {
-    server.send_P(200, "text/html", webpage);
-  });
-  Serial.println("Step 7.1 ok");
-  server.begin();
-
-  Serial.println("Step 7 ok");
-
-  // setup finished, switch on red led
-  ledRgbRed.on();
-
-  Serial.println("Step 8 ok");
-}
-
-void loop()
-{
-  webSocket.loop();
-  server.handleClient();
-  if (Serial.available() > 0)
-  {
-    char c[] = {(char)Serial.read()};
-    webSocket.broadcastTXT(c, sizeof(c));
-  }
-  checkHealthCheckTime();
-}
-
 double absPro(double x)
 {
-  if (x > 0)
-  {
-    return x;
-  }
-  else
-  {
-    return -x;
-  }
+  return x > 0 ? x : -x;
 }
 
 int getLeftMotorValueNew(double degrees, double distance)
@@ -232,6 +130,26 @@ int getRightMotorValueNew(double degrees, double distance)
   return result > minMotorSpeed ? result : 0;
 }
 
+String setMotorsSpeed(int left, int right)
+{
+  if ((0 <= left && left <= MAX_ANALOG_WRITE) && (0 <= right && right <= MAX_ANALOG_WRITE))
+  {
+    analogWrite(LEFT_MOTOR, left, 255U);
+    analogWrite(RIGHT_MOTOR, right, 255U);
+    return "OK";
+  }
+  else
+  {
+    Serial.println("Not valid values");
+    return "Error";
+  }
+}
+
+void stopMotors()
+{
+  setMotorsSpeed(0, 0);
+}
+
 String setMotorsSpeedFromPad(double degrees, double distance)
 {
   if (distance > 0)
@@ -256,26 +174,6 @@ String setMotorsSpeedFromPad(double degrees, double distance)
     Serial.println("Distance 0. Motors stopped");
     return "Distance 0. Motors stopped";
   }
-}
-
-String setMotorsSpeed(int left, int right)
-{
-  if ((0 <= left && left <= MAX_ANALOG_WRITE) && (0 <= right && right <= MAX_ANALOG_WRITE))
-  {
-    analogWrite(LEFT_MOTOR, left, 255U);
-    analogWrite(RIGHT_MOTOR, right, 255U);
-    return "OK";
-  }
-  else
-  {
-    Serial.println("Not valid values");
-    return "Error";
-  }
-}
-
-void stopMotors()
-{
-  setMotorsSpeed(0, 0);
 }
 
 String ejectPastura()
@@ -512,4 +410,70 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
       }
     }
   }
+}
+
+void setup()
+{
+  // Start the Serial communication to send messages to the computer
+  Serial.begin(115200);
+  delay(500);
+
+  // set pinMode
+  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(RIGHT_MOTOR, OUTPUT);
+  pinMode(LEFT_MOTOR, OUTPUT);
+
+  // initialize pins values
+  digitalWrite(LED_BUILTIN, HIGH);
+  digitalWrite(RIGHT_MOTOR, LOW);
+  digitalWrite(LEFT_MOTOR, LOW);
+
+  // create leds
+  ledBack.attach(LED_BACK, UNDEFINED);
+  ledRgbBlue.attach(LED_RGB_BLUE, BLUE);
+  ledRgbRed.attach(LED_RGB_RED, RED);
+  ledRgbGreen.attach(LED_RGB_GREEN, GREEN);
+
+  // initialize servo
+  ejectServo.attach(EJECT_SERVO);
+  delay(15);
+  ejectServo.write(0);
+
+  // initialize sensors and set resolution
+  sensors.begin();
+  sensors.setResolution(tempSensor1, tempSensorResolution);
+  //sensors.setResolution(tempSensor2, tempSensorResolution);
+
+  WiFi.persistent(false); 
+  // workaround DHCP crash on ESP32 when AP Mode!!!
+  // https://github.com/espressif/arduino-esp32/issues/2025#issuecomment-562848209
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(mySsid, myPassword);
+  delay(1000); 
+  // workaround DHCP crash on ESP32 when AP Mode!!! Non servirebbe se funzionasse WiFi.persistent(false)
+  // https://github.com/espressif/arduino-esp32/issues/2025#issuecomment-544131287
+  WiFi.softAPConfig(local_ip, gateway, netmask);
+
+  webSocket.begin();
+  webSocket.onEvent(webSocketEvent);
+
+  server.on("/", []() {
+    server.send_P(200, "text/html", webpage);
+  });
+  server.begin();
+
+  // setup finished, switch on red led
+  ledRgbRed.on();
+}
+
+void loop()
+{
+  webSocket.loop();
+  server.handleClient();
+  if (Serial.available() > 0)
+  {
+    char c[] = {(char)Serial.read()};
+    webSocket.broadcastTXT(c, sizeof(c));
+  }
+  checkHealthCheckTime();
 }

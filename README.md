@@ -44,3 +44,14 @@ Please follow [flutter documentation](https://flutter.dev/docs/get-started/insta
 ## Links
 
 * https://github.com/G6EJD/LiPo_Battery_Capacity_Estimator
+
+## Notes
+
+* Due to an ESP32 bug on AP mode with DHCP enabled, before upload the sketch to ESP32 you need to Erase Flash:
+    https://github.com/espressif/esptool#erase-flash-erase_flash--erase-region
+* If DHCP still not working, trying to put a delay before enabling WiFi
+``` c++
+WiFi.softAP(mySsid, myPassword);
+delay(1000); // workaround to fix DHCP not working on ESP32 when AP Mode!!!
+WiFi.softAPConfig(local_ip, gateway, netmask);
+```

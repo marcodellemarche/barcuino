@@ -45,13 +45,27 @@ Please follow [flutter documentation](https://flutter.dev/docs/get-started/insta
 
 * https://github.com/G6EJD/LiPo_Battery_Capacity_Estimator
 
-## Notes
+## DHCP bug on ESP32
 
-* Due to an ESP32 bug on AP mode with DHCP enabled, before upload the sketch to ESP32 you need to Erase Flash:
-    https://github.com/espressif/esptool#erase-flash-erase_flash--erase-region
-* If DHCP still not working, trying to put a delay before enabling WiFi
-``` c++
-WiFi.softAP(mySsid, myPassword);
-delay(1000); // workaround to fix DHCP not working on ESP32 when AP Mode!!!
-WiFi.softAPConfig(local_ip, gateway, netmask);
+On espressif ESP32 firmware [v.1.0.4](https://github.com/espressif/arduino-esp32/releases/tag/1.0.4) there is a bug on DHCP in AP mode, causes these errors on client connection to ESP.
 ```
+dhcps: send_offer>>udp_sendto result 0
+Guru Meditation Error: Core  0 panic'ed (InstrFetchProhibited). Exception was unhandled.
+```
+```
+#0  0x00000000:0x3ffb3db0 in ?? ??:0
+#1  0x4011c34a:0x3ffb3df0 in handle_dhcp at /home/runner/work/esp32-arduino-lib-builder/esp32-arduino-lib-builder/esp-idf/components/lwip/apps/dhcpserver/dhcpserver.c:1031
+```
+There are two workaround:
+1. Set WiFi config [persistence to false](https://github.com/espressif/arduino-esp32/issues/2025#issuecomment-562848209), before enabling WiFi.
+    ``` 
+    WiFi.persistent(false); 
+    ```
+    Before upload the sketch to ESP32 you need to [Erase Flash](https://github.com/espressif/esptool#erase-flash-erase_flash--erase-region)
+
+2. If DHCP still not working, trying to [use a delay](https://github.com/espressif/arduino-esp32/issues/2025#issuecomment-544131287) before enabling WiFi
+    ``` c++
+    WiFi.softAP(mySsid, myPassword);
+    delay(1000); // workaround to fix DHCP not working on ESP32 when AP Mode!!!
+    WiFi.softAPConfig(local_ip, gateway, netmask);
+    ```

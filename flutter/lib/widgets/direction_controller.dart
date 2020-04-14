@@ -5,7 +5,7 @@ import 'package:control_pad/views/pad_button_view.dart';
 
 import '../utils.dart';
 
-class DirectionController extends StatelessWidget {
+class DirectionController extends StatefulWidget {
   final Function onDirectionChanged;
   final Function onPadButtonPressed;
   // type 0 = Joystick, type 1 = arrows
@@ -17,13 +17,19 @@ class DirectionController extends StatelessWidget {
       this.onPadButtonPressed});
 
   @override
+  _DirectionControllerState createState() => _DirectionControllerState();
+}
+
+class _DirectionControllerState extends State<DirectionController> {
+  @override
   Widget build(BuildContext context) {
-    if (controllerType == null || controllerType == 0) {
+    //print('direction_controller build');
+    if (widget.controllerType == null || widget.controllerType == 0) {
       return Container(
         padding: EdgeInsets.all(20),
         color: Colors.transparent,
         child: JoystickView(
-          onDirectionChanged: onDirectionChanged,
+          onDirectionChanged: widget.onDirectionChanged,
           interval: Duration(milliseconds: 300),
         ),
       );
@@ -31,7 +37,7 @@ class DirectionController extends StatelessWidget {
       return Container(
         padding: EdgeInsets.all(20),
         child: PadButtonsView(
-          padButtonPressedCallback: onPadButtonPressed,
+          padButtonPressedCallback: widget.onPadButtonPressed,
           buttons: const [
             PadButtonItem(
               index: ButtonPressed.RIGHT,

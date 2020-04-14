@@ -55,12 +55,14 @@ class Utils {
           actions: <Widget>[
             FlatButton(
               child: Text(cancelButtonText),
+              color: Colors.red,
               onPressed: () {
                 Navigator.of(context).pop(ConfirmAction.CANCEL);
               },
             ),
             FlatButton(
               child: Text(confirmButtonText),
+              color: Colors.green,
               onPressed: () {
                 Navigator.of(context).pop(ConfirmAction.ACCEPT);
               },

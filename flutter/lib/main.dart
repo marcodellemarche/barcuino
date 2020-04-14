@@ -88,8 +88,9 @@ class _MyHomePageState extends State<MyHomePage> {
   void _socketConnect() {
     webSocket.initCommunication(wsServerAddress, wsServerPort);
     webSocket.addListener(_onMessageReceived);
-    webSocket.isOn.stream
-        .listen((state) => setState(() => _isSocketConnected = state));
+    webSocket.isOn.stream.listen((state) {
+      setState(() => _isSocketConnected = state);
+    });
   }
 
   void _onMessageReceived(String serverMessage) {
@@ -158,8 +159,8 @@ class _MyHomePageState extends State<MyHomePage> {
           title: 'Lanciamo?',
           message:
               'Guarda che poi non cen\'hai n\'altra!\r\n\r\nLanciamo qua, sei sicuro?',
-          //confirmButtonText: 'BONO, MORTACCI!',
-          //cancelButtonText: 'LANCIA ZIO!',
+          cancelButtonText: 'Statte bono!',
+          confirmButtonText: 'LANCIA ZIO!',
         ).then((ConfirmAction response) {
           switch (response) {
             case ConfirmAction.ACCEPT:

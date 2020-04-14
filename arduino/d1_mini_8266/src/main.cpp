@@ -205,6 +205,10 @@ void checkHealthCheckTime() {
   if (previousHealtCheck > 0) { // don't check if alarm was already triggered or at the startup
     if (millis() - previousHealtCheck > maxTimeInterval) {
       Serial.println("Server is dead! HealtCheck timer triggered.");
+        
+      // Do what you have to do when server gets lost
+      stopMotors();
+
       previousHealtCheck = 0;
     }
   }
@@ -360,9 +364,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         Serial.println("HealthCheck received, server is on.");
         // Save the last time healtcheck was received
         previousHealtCheck = millis();
-        
-        // Do what you have to do when server gets lost
-        stopMotors();
 
         // Send back an healthcheck
         char payload[] = {"healthcheck"};

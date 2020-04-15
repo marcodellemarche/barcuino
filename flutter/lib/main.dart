@@ -70,12 +70,24 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _wifiConnect() {
     Wifi.connection(ssid, password).then((WifiState state) {
-      print('WiFi state: $state');
-      _isWiFiConnected = true;
+      switch (state) {
+        case WifiState.success:
+        case WifiState.already:
+          print('WiFi state: $state');
+          setState(() => _isWiFiConnected = true); 
+          break;
+        case WifiState.error:
+          print('Error connection WiFi. State: $state');
+          setState(() => _isWiFiConnected = false); 
+          break;
+        default:
+          print('Error connecting');
+          setState(() => _isWiFiConnected = false); 
+          break;
+      }
     }).catchError((error) {
-      // print('Error connecting to $ssid');
       print('Error connecting');
-      _isWiFiConnected = false;
+      setState(() => _isWiFiConnected = false); 
     });
   }
 
@@ -97,8 +109,13 @@ class _MyHomePageState extends State<MyHomePage> {
     print('Barkino is still alive');
     if (_healthCheckTimer != null) _healthCheckTimer.cancel();
     _healthCheckTimer = new Timer(Duration(seconds: 5), () {
-      print('Barkino is dead. Switching off websocket');
+      //print('Barkino is dead. Switching off websocket');
       _socketDisconnect();
+      Utils.asyncAlert(
+        context: context,
+        title: 'Disconnesso',
+        message: 'Socket disconnesso!\r\nRiconnetterlo per comunicare con il barchino.',
+      );
     });
 
     if (serverMessage.startsWith('#getTemp;')) {
@@ -245,7 +262,7 @@ class _MyHomePageState extends State<MyHomePage> {
           children: <Widget>[
             RaisedButton(
               child: Text(
-                "Connect WiFi",
+                !_isWiFiConnected ? "Connect WiFi" : "Re-connect WiFi",
                 style: TextStyle(color: Colors.white, fontSize: 20.0),
               ),
               color: Colors.blue,

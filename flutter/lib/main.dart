@@ -1,13 +1,14 @@
+import 'package:barkino/widgets/direction_controller.dart';
+import 'package:control_pad/models/gestures.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:gateway/gateway.dart';
 import 'package:wifi/wifi.dart';
-import 'package:control_pad/control_pad.dart';
 
 import './widgets/log_messages.dart';
+import './widgets/temperature.dart';
 import './websockets.dart';
 import './utils.dart';
-
 
 void main() => runApp(MyApp());
 
@@ -42,7 +43,9 @@ class _MyHomePageState extends State<MyHomePage> {
   List<String> logMessages = new List<String>();
   var logMessageTextController = TextEditingController();
   Timer _timer;
+  Timer _healthCheckTimer;
   var _temperature;
+  int controllerType = 0;
 
   String ipGateway = '';
 
@@ -58,17 +61,33 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
     _controller = TextEditingController(text: wsServerAddress);
     _timer = new Timer.periodic(Duration(seconds: 1), (timer) {
-      _getTemperature(1);
+      if (_isSocketConnected) {
+        webSocket.send('#healthcheck;\n');
+        _getTemperature(1);
+      }
     });
   }
 
   void _wifiConnect() {
     Wifi.connection(ssid, password).then((WifiState state) {
-      print('WiFi state: $state');
-      _isWiFiConnected = true;
+      switch (state) {
+        case WifiState.success:
+        case WifiState.already:
+          print('WiFi state: $state');
+          setState(() => _isWiFiConnected = true); 
+          break;
+        case WifiState.error:
+          print('Error connection WiFi. State: $state');
+          setState(() => _isWiFiConnected = false); 
+          break;
+        default:
+          print('Error connecting');
+          setState(() => _isWiFiConnected = false); 
+          break;
+      }
     }).catchError((error) {
-      print('Error connecting to $ssid');
-      _isWiFiConnected = false;
+      print('Error connecting');
+      setState(() => _isWiFiConnected = false); 
     });
   }
 
@@ -81,27 +100,37 @@ class _MyHomePageState extends State<MyHomePage> {
   void _socketConnect() {
     webSocket.initCommunication(wsServerAddress, wsServerPort);
     webSocket.addListener(_onMessageReceived);
-    webSocket.isOn.stream
-        .listen((state) => setState(() => _isSocketConnected = state));
+    webSocket.isOn.stream.listen((state) {
+      setState(() => _isSocketConnected = state);
+    });
   }
 
   void _onMessageReceived(String serverMessage) {
-    if (serverMessage[0] == '#') {
-      // è la risosta ad un comando
-      // per ora c'è solo la temperatura
-      setState(
-          () => _temperature = double.tryParse(serverMessage.substring(1)));
+    print('Barkino is still alive');
+    if (_healthCheckTimer != null) _healthCheckTimer.cancel();
+    _healthCheckTimer = new Timer(Duration(seconds: 5), () {
+      //print('Barkino is dead. Switching off websocket');
+      _socketDisconnect();
+      Utils.asyncAlert(
+        context: context,
+        title: 'Disconnesso',
+        message: 'Socket disconnesso!\r\nRiconnetterlo per comunicare con il barchino.',
+      );
+    });
+
+    if (serverMessage.startsWith('#getTemp;')) {
+      String value = serverMessage.split(';')[1];
+      setState(() => _temperature = double.tryParse(value));
     } else {
-      setState(() {
-        logMessages.add(serverMessage);
-        //showMessage += serverMessage + '\r\n';
-      });
+      setState(() => logMessages.add(serverMessage));
     }
   }
 
   void _socketDisconnect() {
     webSocket.removeListener(_onMessageReceived);
     webSocket.reset();
+    if (_healthCheckTimer != null) _healthCheckTimer.cancel();
+    // _timer.cancel();
   }
 
   _handleNewIp(String value) {
@@ -147,8 +176,8 @@ class _MyHomePageState extends State<MyHomePage> {
           title: 'Lanciamo?',
           message:
               'Guarda che poi non cen\'hai n\'altra!\r\n\r\nLanciamo qua, sei sicuro?',
-          //confirmButtonText: 'BONO, MORTACCI!',
-          //cancelButtonText: 'LANCIA ZIO!',
+          cancelButtonText: 'Statte bono!',
+          confirmButtonText: 'LANCIA ZIO!',
         ).then((ConfirmAction response) {
           switch (response) {
             case ConfirmAction.ACCEPT:
@@ -185,9 +214,31 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void _onPadToggle(double degrees, double normalizedDistance) {
+  void _onDirectionChanged(double degrees, double normalizedDistance) {
     int degreesInt = degrees.floor();
     double distanceShort = (normalizedDistance * 10).floor() / 10;
+    webSocket.send('#setMotorsSpeedFromPad;$degreesInt;$distanceShort;\n');
+  }
+
+  void _onPadButtonPressed(int buttonPressed, Gestures gesture) {
+    double distanceShort = 1;
+    int degreesInt;
+    switch (buttonPressed) {
+      case ButtonPressed.LEFT:
+        degreesInt = 270;
+        break;
+      case ButtonPressed.UPWARD:
+        degreesInt = 0;
+        break;
+      case ButtonPressed.RIGHT:
+        degreesInt = 90;
+        break;
+      case ButtonPressed.STOP:
+        degreesInt = 0;
+        distanceShort = 0;
+        break;
+      default:
+    }
     webSocket.send('#setMotorsSpeedFromPad;$degreesInt;$distanceShort;\n');
   }
 
@@ -211,7 +262,7 @@ class _MyHomePageState extends State<MyHomePage> {
           children: <Widget>[
             RaisedButton(
               child: Text(
-                "Connect WiFi",
+                !_isWiFiConnected ? "Connect WiFi" : "Re-connect WiFi",
                 style: TextStyle(color: Colors.white, fontSize: 20.0),
               ),
               color: Colors.blue,
@@ -244,12 +295,25 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ],
             ),
-            Container(
-              color: Colors.transparent,
-              child: JoystickView(
-                onDirectionChanged: _onPadToggle,
-                interval: Duration(milliseconds: 300),
+            DirectionController(
+              onDirectionChanged: _onDirectionChanged,
+              controllerType: controllerType,
+              onPadButtonPressed: _onPadButtonPressed,
+            ),
+            RaisedButton(
+              child: Text(
+                controllerType == 1 ? "Show Joystick" : "Show Frecce",
+                style: TextStyle(color: Colors.white, fontSize: 20.0),
               ),
+              color: Colors.blue,
+              onPressed: () {
+                setState(() {
+                  if (controllerType == 1)
+                    controllerType = 0;
+                  else
+                    controllerType = 1;
+                });
+              },
             ),
             RaisedButton(
               child: Text(
@@ -267,11 +331,8 @@ class _MyHomePageState extends State<MyHomePage> {
               color: Colors.green,
               onPressed: _isLedOn ? _switchOffLed : _switchOnLed,
             ),
-            Container(
-              child: Text(
-                "Temp: ${_isSocketConnected ? _temperature.toString() : "--"}",
-                style: TextStyle(color: Colors.black, fontSize: 20.0),
-              ),
+            TemperatureSensor(
+              value: _isSocketConnected ? _temperature.toString() : null,
             ),
             LogMessages(
               messagesList: logMessages,

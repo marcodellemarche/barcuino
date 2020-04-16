@@ -4,8 +4,12 @@
 			"path": "."
 		},
 		{
-			"name": "arduino",
-			"path": "arduino"
+			"name": "wemos_d1_mini32",
+			"path": "arduino/wemos_d1_mini32"
+		},
+		{
+			"name": "d1_mini_8266",
+			"path": "arduino/d1_mini_8266"
 		},
 		{
 			"path": "flutter"
@@ -20,7 +24,20 @@
 			"xiosbase": "cpp",
 			"cstdlib": "cpp",
 			"algorithm": "cpp",
-			"xlocnum": "cpp"
+			"xlocnum": "cpp",
+			"array": "cpp",
+			"deque": "cpp",
+			"initializer_list": "cpp",
+			"list": "cpp",
+			"vector": "cpp",
+			"xhash": "cpp",
+			"xstring": "cpp",
+			"xtree": "cpp",
+			"xutility": "cpp",
+			"string": "cpp",
+			"unordered_map": "cpp",
+			"unordered_set": "cpp",
+			"string_view": "cpp"
 		}
 	}
 }

@@ -228,7 +228,7 @@ void checkHealthCheckTime()
     if (millis() - previousHealtCheck > maxTimeInterval)
     {
       Serial.println("Server is dead! HealtCheck timer triggered.");
-      
+
       // Do what you have to do when server gets lost
       stopMotors();
 

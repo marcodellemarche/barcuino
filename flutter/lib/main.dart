@@ -34,7 +34,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  WebSocketsNotifications webSocket = new WebSocketsNotifications();
+  static WebSocketsNotifications webSocket = new WebSocketsNotifications();
   String wsServerAddress = '192.168.4.1';
   int wsServerPort = 81;
   bool _isSocketConnected = false;
@@ -57,6 +57,16 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _isWiFiConnected = false;
   String showMessage = '';
 
+  // set as static objects to avoid re-building on each timer trigger
+  final DirectionController joystick = DirectionController(
+    onDirectionChanged: _onDirectionChanged,
+    controllerType: 0,
+  );
+  final DirectionController pad = DirectionController(
+    onDirectionChanged: _onDirectionChanged,
+    controllerType: 1,
+  );
+
   void initState() {
     super.initState();
     _controller = TextEditingController(text: wsServerAddress);
@@ -74,20 +84,20 @@ class _MyHomePageState extends State<MyHomePage> {
         case WifiState.success:
         case WifiState.already:
           print('WiFi state: $state');
-          setState(() => _isWiFiConnected = true); 
+          setState(() => _isWiFiConnected = true);
           break;
         case WifiState.error:
           print('Error connection WiFi. State: $state');
-          setState(() => _isWiFiConnected = false); 
+          setState(() => _isWiFiConnected = false);
           break;
         default:
           print('Error connecting');
-          setState(() => _isWiFiConnected = false); 
+          setState(() => _isWiFiConnected = false);
           break;
       }
     }).catchError((error) {
       print('Error connecting');
-      setState(() => _isWiFiConnected = false); 
+      setState(() => _isWiFiConnected = false);
     });
   }
 
@@ -114,7 +124,8 @@ class _MyHomePageState extends State<MyHomePage> {
       Utils.asyncAlert(
         context: context,
         title: 'Disconnesso',
-        message: 'Socket disconnesso!\r\nRiconnetterlo per comunicare con il barchino.',
+        message:
+            'Socket disconnesso!\r\nRiconnetterlo per comunicare con il barchino.',
       );
     });
 
@@ -214,31 +225,9 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void _onDirectionChanged(double degrees, double normalizedDistance) {
+  static void _onDirectionChanged(double degrees, double normalizedDistance) {
     int degreesInt = degrees.floor();
     double distanceShort = (normalizedDistance * 10).floor() / 10;
-    webSocket.send('#setMotorsSpeedFromPad;$degreesInt;$distanceShort;\n');
-  }
-
-  void _onPadButtonPressed(int buttonPressed, Gestures gesture) {
-    double distanceShort = 1;
-    int degreesInt;
-    switch (buttonPressed) {
-      case ButtonPressed.LEFT:
-        degreesInt = 270;
-        break;
-      case ButtonPressed.UPWARD:
-        degreesInt = 0;
-        break;
-      case ButtonPressed.RIGHT:
-        degreesInt = 90;
-        break;
-      case ButtonPressed.STOP:
-        degreesInt = 0;
-        distanceShort = 0;
-        break;
-      default:
-    }
     webSocket.send('#setMotorsSpeedFromPad;$degreesInt;$distanceShort;\n');
   }
 
@@ -295,11 +284,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ],
             ),
-            DirectionController(
-              onDirectionChanged: _onDirectionChanged,
-              controllerType: controllerType,
-              onPadButtonPressed: _onPadButtonPressed,
-            ),
+            controllerType == 0 ? joystick : pad, // DirectionController
             RaisedButton(
               child: Text(
                 controllerType == 1 ? "Show Joystick" : "Show Frecce",

@@ -11,12 +11,12 @@
 // PIN declaration
 #define LEFT_MOTOR 17
 #define RIGHT_MOTOR 21
-#define EJECT_SERVO 26 // not working
+#define EJECT_SERVO 26
 
 #define LED_RGB_RED 23
 #define LED_RGB_GREEN 33
 #define LED_RGB_BLUE 19
-#define LED_BACK 35 // not working
+#define LED_BACK 22 // not working
 
 #define TEMP_SENSORS_BUS 18 // not working
 

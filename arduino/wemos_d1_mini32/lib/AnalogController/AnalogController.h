@@ -1,12 +1,12 @@
 #include <Arduino.h>
 
-enum LedType { UNDEFINED, RED, GREEN, BLUE, BACK };
+enum AnalogType { UNDEFINED, RED, GREEN, BLUE, BACK, MOTOR };
 
-class LedController
+class AnalogController
 {
 public:
-    LedController();
-    uint8_t attach(int pinm, LedType type); // attach the given pin and initialize pin
+    AnalogController();
+    uint8_t attach(int pin, AnalogType type, int channel); // attach the given pin and initialize pin
     void detach();
     void on();  // switch on LED with max value supported by led type
     void toggle(); // switch on/off
@@ -16,5 +16,7 @@ public:
 private:
     bool    _attached;
     uint8_t _pin;
-    LedType _type;
+    uint8_t _channel;
+    AnalogType _type;
+    uint32_t _valueMax = 255U;
 };

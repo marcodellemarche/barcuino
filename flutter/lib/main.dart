@@ -1,5 +1,4 @@
 import 'package:barkino/widgets/direction_controller.dart';
-import 'package:control_pad/models/gestures.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:gateway/gateway.dart';
@@ -40,9 +39,15 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _isSocketConnected = false;
   bool _isPasturaEjected = false;
   bool _isLedOn = false;
+  bool _isRgbRedOn = true;
+  bool _isRgbBlueOn = false;
+  bool _isRgbGreenOn = false;
+  bool _isBackLedOn = false;
+  bool _autoReconnectSocket = true;
   List<String> logMessages = new List<String>();
   var logMessageTextController = TextEditingController();
   Timer _timer;
+  Timer _autoReconnectTimer;
   Timer _healthCheckTimer;
   var _temperature;
   int controllerType = 0;
@@ -111,7 +116,13 @@ class _MyHomePageState extends State<MyHomePage> {
     webSocket.initCommunication(wsServerAddress, wsServerPort);
     webSocket.addListener(_onMessageReceived);
     webSocket.isOn.stream.listen((state) {
-      setState(() => _isSocketConnected = state);
+      setState(() {
+        _isSocketConnected = state;
+        if (_isSocketConnected) {
+          if (_autoReconnectTimer != null && _autoReconnectTimer.isActive)
+            _autoReconnectTimer.cancel();
+        }
+      });
     });
   }
 
@@ -119,14 +130,8 @@ class _MyHomePageState extends State<MyHomePage> {
     print('Barkino is still alive');
     if (_healthCheckTimer != null) _healthCheckTimer.cancel();
     _healthCheckTimer = new Timer(Duration(seconds: 5), () {
-      //print('Barkino is dead. Switching off websocket');
+      print('Barkino is dead. Switching off websocket');
       _socketDisconnect();
-      Utils.asyncAlert(
-        context: context,
-        title: 'Disconnesso',
-        message:
-            'Socket disconnesso!\r\nRiconnetterlo per comunicare con il barchino.',
-      );
     });
 
     if (serverMessage.startsWith('#getTemp;')) {
@@ -141,7 +146,15 @@ class _MyHomePageState extends State<MyHomePage> {
     webSocket.removeListener(_onMessageReceived);
     webSocket.reset();
     if (_healthCheckTimer != null) _healthCheckTimer.cancel();
-    // _timer.cancel();
+    // Utils.asyncAlert(
+    //   context: context,
+    //   title: 'Disconnesso',
+    //   message:
+    //       'Socket disconnesso!\r\nRiconnetterlo per comunicare con il barchino.',
+    // );
+    if (_autoReconnectSocket) {
+      _autoReconnectTimer = new Timer(Duration(seconds: 1),  _socketConnect);
+    }
   }
 
   _handleNewIp(String value) {
@@ -308,14 +321,89 @@ class _MyHomePageState extends State<MyHomePage> {
               color: Colors.green,
               onPressed: !_isPasturaEjected ? _ejectPastura : _resetPastura,
             ),
-            RaisedButton(
-              child: Text(
-                "Switch ${_isLedOn ? "off" : "on"} LED!",
-                style: TextStyle(color: Colors.white, fontSize: 20.0),
+            Container(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Text(
+                        "Red",
+                        style: TextStyle(color: Colors.black, fontSize: 18.0),
+                      ),
+                      Checkbox(
+                        value: _isRgbRedOn,
+                        onChanged: (value) {
+                          setState(() {
+                            webSocket.send('#led;red;-1;\n');
+                            _isRgbRedOn = value;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: <Widget>[
+                      Text(
+                        "Green",
+                        style: TextStyle(color: Colors.black, fontSize: 18.0),
+                      ),
+                      Checkbox(
+                        value: _isRgbGreenOn,
+                        onChanged: (value) {
+                          setState(() {
+                            webSocket.send('#led;green;\n');
+                            _isRgbGreenOn = value;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: <Widget>[
+                      Text(
+                        "Blue",
+                        style: TextStyle(color: Colors.black, fontSize: 18.0),
+                      ),
+                      Checkbox(
+                        value: _isRgbBlueOn,
+                        onChanged: (value) {
+                          setState(() {
+                            webSocket.send('#led;blue;\n');
+                            _isRgbBlueOn = value;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: <Widget>[
+                      Text(
+                        "Back",
+                        style: TextStyle(color: Colors.black, fontSize: 18.0),
+                      ),
+                      Checkbox(
+                        value: _isBackLedOn,
+                        onChanged: (value) {
+                          setState(() {
+                            webSocket.send('#led;back;\n');
+                            _isBackLedOn = value;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              color: Colors.green,
-              onPressed: _isLedOn ? _switchOffLed : _switchOnLed,
             ),
+            // RaisedButton(
+            //   child: Text(
+            //     "Switch ${_isLedOn ? "off" : "on"} LED!",
+            //     style: TextStyle(color: Colors.white, fontSize: 20.0),
+            //   ),
+            //   color: Colors.green,
+            //   onPressed: _isLedOn ? _switchOffLed : _switchOnLed,
+            // ),
             TemperatureSensor(
               value: _isSocketConnected ? _temperature.toString() : null,
             ),

@@ -41,6 +41,7 @@ Please follow [flutter documentation](https://flutter.dev/docs/get-started/insta
 * https://github.com/milesburton/Arduino-Temperature-Control-Library
 * https://github.com/artrmz/flutter_control_pad
 * https://github.com/LilyGO/ESP32-MINI-32-V1.3
+* https://randomnerdtutorials.com/esp32-pinout-reference-gpios/
 
 ## Links
 

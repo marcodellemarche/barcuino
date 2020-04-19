@@ -16,7 +16,7 @@
 #define LED_RGB_RED 23
 #define LED_RGB_GREEN 33
 #define LED_RGB_BLUE 19
-#define LED_BACK 22 // not working
+#define LED_BACK 22
 
 #define TEMP_SENSORS_BUS 18 // not working
 

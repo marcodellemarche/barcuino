@@ -6,6 +6,7 @@
 #include <Servo.h>
 #include <AnalogController.h>
 #include <math.h>
+#include <OneWire.h>
 #include <DallasTemperature.h>
 
 // PIN declaration
@@ -18,7 +19,7 @@
 #define LED_RGB_BLUE 19
 #define LED_BACK 22
 
-#define TEMP_SENSORS_BUS 18 // not working
+#define TEMP_SENSORS_BUS 18
 
 // temp sensor
 OneWire oneWire(TEMP_SENSORS_BUS);
@@ -446,6 +447,7 @@ void setup()
   // **********************************************
 
   // initialize sensors and set resolution
+  pinMode(TEMP_SENSORS_BUS, INPUT_PULLUP);
   sensors.begin();
   sensors.setResolution(tempSensor1, tempSensorResolution);
   sensors.setResolution(tempSensor2, tempSensorResolution);

@@ -38,10 +38,15 @@ Please follow [flutter documentation](https://flutter.dev/docs/get-started/insta
 
 ## References
 
-* https://github.com/milesburton/Arduino-Temperature-Control-Library
+Flutter 
 * https://github.com/artrmz/flutter_control_pad
+
+Arduino
 * https://github.com/LilyGO/ESP32-MINI-32-V1.3
 * https://randomnerdtutorials.com/esp32-pinout-reference-gpios/
+* https://github.com/milesburton/Arduino-Temperature-Control-Library
+* https://github.com/stickbreaker/OneWire
+* https://github.com/Links2004/arduinoWebSockets
 
 ## Links
 
@@ -71,3 +76,12 @@ There are two workaround:
     delay(1000); // workaround to fix DHCP not working on ESP32 when AP Mode!!!
     WiFi.softAPConfig(local_ip, gateway, netmask);
     ```
+    
+## OneWire bug on ESP32
+
+Due to some timig problems on original OneWire library, we decided to use the one from [stickbreaker repo](https://github.com/stickbreaker/OneWire).
+Here his explanation:
+```
+A modification of the Arduino OneWire library maintained by @PaulStoffregen. 
+This modifications supports the ESP32 under the Arduino-esp32 Environment.
+```

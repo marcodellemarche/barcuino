@@ -43,7 +43,7 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _isRgbBlueOn = false;
   bool _isRgbGreenOn = false;
   bool _isBackLedOn = false;
-  bool _autoReconnectSocket = true;
+  bool _autoReconnectSocket = false;
   List<String> logMessages = new List<String>();
   var logMessageTextController = TextEditingController();
   Timer _timer;
@@ -192,6 +192,17 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() => _isPasturaEjected = false);
   }
 
+  void _onSocketConnectionButtonPressed() {
+    if (_isSocketConnected) {
+      _autoReconnectSocket = false;
+      _socketDisconnect();
+    }
+    else {
+      _autoReconnectSocket = true;
+      _socketConnect();
+    }
+  }
+
   void _ejectPastura() {
     if (_isSocketConnected) {
       if (!_isPasturaEjected) {
@@ -292,8 +303,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     style: TextStyle(color: Colors.white, fontSize: 20.0),
                   ),
                   color: _isSocketConnected ? Colors.red : Colors.blue,
-                  onPressed:
-                      _isSocketConnected ? _socketDisconnect : _socketConnect,
+                  onPressed: _onSocketConnectionButtonPressed,
                 ),
               ],
             ),
@@ -321,89 +331,89 @@ class _MyHomePageState extends State<MyHomePage> {
               color: Colors.green,
               onPressed: !_isPasturaEjected ? _ejectPastura : _resetPastura,
             ),
-            Container(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      Text(
-                        "Red",
-                        style: TextStyle(color: Colors.black, fontSize: 18.0),
-                      ),
-                      Checkbox(
-                        value: _isRgbRedOn,
-                        onChanged: (value) {
-                          setState(() {
-                            webSocket.send('#led;red;-1;\n');
-                            _isRgbRedOn = value;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: <Widget>[
-                      Text(
-                        "Green",
-                        style: TextStyle(color: Colors.black, fontSize: 18.0),
-                      ),
-                      Checkbox(
-                        value: _isRgbGreenOn,
-                        onChanged: (value) {
-                          setState(() {
-                            webSocket.send('#led;green;\n');
-                            _isRgbGreenOn = value;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: <Widget>[
-                      Text(
-                        "Blue",
-                        style: TextStyle(color: Colors.black, fontSize: 18.0),
-                      ),
-                      Checkbox(
-                        value: _isRgbBlueOn,
-                        onChanged: (value) {
-                          setState(() {
-                            webSocket.send('#led;blue;\n');
-                            _isRgbBlueOn = value;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: <Widget>[
-                      Text(
-                        "Back",
-                        style: TextStyle(color: Colors.black, fontSize: 18.0),
-                      ),
-                      Checkbox(
-                        value: _isBackLedOn,
-                        onChanged: (value) {
-                          setState(() {
-                            webSocket.send('#led;back;\n');
-                            _isBackLedOn = value;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            // RaisedButton(
-            //   child: Text(
-            //     "Switch ${_isLedOn ? "off" : "on"} LED!",
-            //     style: TextStyle(color: Colors.white, fontSize: 20.0),
+            // Container(
+            //   child: Row(
+            //     mainAxisAlignment: MainAxisAlignment.center,
+            //     children: <Widget>[
+            //       Row(
+            //         children: <Widget>[
+            //           Text(
+            //             "Red",
+            //             style: TextStyle(color: Colors.black, fontSize: 18.0),
+            //           ),
+            //           Checkbox(
+            //             value: _isRgbRedOn,
+            //             onChanged: (value) {
+            //               setState(() {
+            //                 webSocket.send('#led;red;-1;\n');
+            //                 _isRgbRedOn = value;
+            //               });
+            //             },
+            //           ),
+            //         ],
+            //       ),
+            //       Row(
+            //         children: <Widget>[
+            //           Text(
+            //             "Green",
+            //             style: TextStyle(color: Colors.black, fontSize: 18.0),
+            //           ),
+            //           Checkbox(
+            //             value: _isRgbGreenOn,
+            //             onChanged: (value) {
+            //               setState(() {
+            //                 webSocket.send('#led;green;\n');
+            //                 _isRgbGreenOn = value;
+            //               });
+            //             },
+            //           ),
+            //         ],
+            //       ),
+            //       Row(
+            //         children: <Widget>[
+            //           Text(
+            //             "Blue",
+            //             style: TextStyle(color: Colors.black, fontSize: 18.0),
+            //           ),
+            //           Checkbox(
+            //             value: _isRgbBlueOn,
+            //             onChanged: (value) {
+            //               setState(() {
+            //                 webSocket.send('#led;blue;\n');
+            //                 _isRgbBlueOn = value;
+            //               });
+            //             },
+            //           ),
+            //         ],
+            //       ),
+            //       Row(
+            //         children: <Widget>[
+            //           Text(
+            //             "Back",
+            //             style: TextStyle(color: Colors.black, fontSize: 18.0),
+            //           ),
+            //           Checkbox(
+            //             value: _isBackLedOn,
+            //             onChanged: (value) {
+            //               setState(() {
+            //                 webSocket.send('#led;back;\n');
+            //                 _isBackLedOn = value;
+            //               });
+            //             },
+            //           ),
+            //         ],
+            //       ),
+            //     ],
             //   ),
-            //   color: Colors.green,
-            //   onPressed: _isLedOn ? _switchOffLed : _switchOnLed,
             // ),
+            RaisedButton(
+              child: Text(
+                "Switch ${_isLedOn ? "off" : "on"} LED!",
+                style: TextStyle(color: Colors.white, fontSize: 20.0),
+              ),
+              color: Colors.green,
+              onPressed: _isLedOn ? _switchOffLed : _switchOnLed,
+            ),
             TemperatureSensor(
               value: _isSocketConnected ? _temperature.toString() : null,
             ),

@@ -43,14 +43,18 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _isRgbBlueOn = false;
   bool _isRgbGreenOn = false;
   bool _isBackLedOn = false;
-  bool _autoReconnectSocket = false;
+
   List<String> logMessages = new List<String>();
   var logMessageTextController = TextEditingController();
-  Timer _timer;
-  Timer _autoReconnectTimer;
-  Timer _healthCheckTimer;
   var _temperature;
   int controllerType = 0;
+
+  bool _autoReconnectSocket = true;
+  bool _isManuallyDisconnected = false;
+
+  Timer _statusTimer;
+  Timer _autoReconnectTimer;
+  Timer _healthCheckTimer;
 
   String ipGateway = '';
 
@@ -60,6 +64,7 @@ class _MyHomePageState extends State<MyHomePage> {
   TextEditingController _controller;
 
   bool _isWiFiConnected = false;
+  bool _isWiFiConnecting = false;
   String showMessage = '';
 
   // set as static objects to avoid re-building on each timer trigger
@@ -75,35 +80,45 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     _controller = TextEditingController(text: wsServerAddress);
-    _timer = new Timer.periodic(Duration(seconds: 1), (timer) {
-      if (_isSocketConnected) {
-        webSocket.send('#healthcheck;\n');
-        _getTemperature(1);
-      }
-    });
   }
 
   void _wifiConnect() {
-    Wifi.connection(ssid, password).then((WifiState state) {
-      switch (state) {
-        case WifiState.success:
-        case WifiState.already:
-          print('WiFi state: $state');
-          setState(() => _isWiFiConnected = true);
-          break;
-        case WifiState.error:
-          print('Error connection WiFi. State: $state');
+    if (!_isWiFiConnecting) {
+      _isWiFiConnecting = true;
+      try {
+        Wifi.connection(ssid, password).timeout(
+          Duration(seconds: 5),
+          onTimeout: () {
+            return WifiState.error;
+          },
+        ).then((WifiState state) {
+          _isWiFiConnecting = false;
+          switch (state) {
+            case WifiState.success:
+            case WifiState.already:
+              print('WiFi state: $state');
+              setState(() => _isWiFiConnected = true);
+              // wait 1 second and try to connect
+              Future.delayed(Duration(seconds: 1), _startAutoReconnectTimer);
+              break;
+            case WifiState.error:
+              print('Error connection WiFi. State: $state');
+              setState(() => _isWiFiConnected = false);
+              break;
+            default:
+              print('Error connecting');
+              setState(() => _isWiFiConnected = false);
+              break;
+          }
+        }).catchError((error) {
+          print('Error connecting: ${error.toString()}');
           setState(() => _isWiFiConnected = false);
-          break;
-        default:
-          print('Error connecting');
-          setState(() => _isWiFiConnected = false);
-          break;
+        });
+      } catch (err) {
+        setState(() => _isWiFiConnected = false);
+        print('WiFi error ${err.toString()}');
       }
-    }).catchError((error) {
-      print('Error connecting');
-      setState(() => _isWiFiConnected = false);
-    });
+    }
   }
 
   void _getGw() {
@@ -113,32 +128,40 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _socketConnect() {
-    webSocket.initCommunication(wsServerAddress, wsServerPort);
-    webSocket.addListener(_onMessageReceived);
-    webSocket.isOn.stream.listen((state) {
-      setState(() {
-        _isSocketConnected = state;
-        if (_isSocketConnected) {
-          if (_autoReconnectTimer != null && _autoReconnectTimer.isActive)
-            _autoReconnectTimer.cancel();
-        }
-      });
+    webSocket.initCommunication(
+        serverAddress: wsServerAddress,
+        serverPort: wsServerPort,
+        timeout: Duration(seconds: 3),
+        pingInterval: Duration(seconds: 1),
+        listener: _onMessageReceived);
+    webSocket.isOn.stream.listen((isConnected) {
+      isConnected ? _onSocketConnectionSuccess() : _onSocketConnectionClosed();
     });
   }
 
-  void _onMessageReceived(String serverMessage) {
-    print('Barkino is still alive');
-    if (_healthCheckTimer != null) _healthCheckTimer.cancel();
-    _healthCheckTimer = new Timer(Duration(seconds: 5), () {
-      print('Barkino is dead. Switching off websocket');
-      _socketDisconnect();
-    });
+  void _onSocketConnectionSuccess() {
+    if (!_isSocketConnected) {
+      //webSocket.addListener(_onMessageReceived);
+      setState(() => _isSocketConnected = true);
+      _stopAutoReconnectTimer();
+      if (_statusTimer != null) _statusTimer.cancel();
 
-    if (serverMessage.startsWith('#getTemp;')) {
-      String value = serverMessage.split(';')[1];
-      setState(() => _temperature = double.tryParse(value));
-    } else {
-      setState(() => logMessages.add(serverMessage));
+      _statusTimer = new Timer.periodic(Duration(seconds: 1), (timer) {
+        if (_isSocketConnected) {
+          //webSocket.send('#healthcheck;\n');
+          //_getTemperature(sensorIndex: 1);
+        }
+      });
+    }
+  }
+
+  void _onSocketConnectionClosed() {
+    if (_isSocketConnected) {
+      setState(() => _isSocketConnected = false);
+      _socketDisconnect();
+      if (!_isManuallyDisconnected && _autoReconnectSocket) {
+        _startAutoReconnectTimer();
+      }
     }
   }
 
@@ -146,14 +169,34 @@ class _MyHomePageState extends State<MyHomePage> {
     webSocket.removeListener(_onMessageReceived);
     webSocket.reset();
     if (_healthCheckTimer != null) _healthCheckTimer.cancel();
-    // Utils.asyncAlert(
-    //   context: context,
-    //   title: 'Disconnesso',
-    //   message:
-    //       'Socket disconnesso!\r\nRiconnetterlo per comunicare con il barchino.',
-    // );
-    if (_autoReconnectSocket) {
-      _autoReconnectTimer = new Timer(Duration(seconds: 1),  _socketConnect);
+    if (_statusTimer != null) _statusTimer.cancel();
+  }
+
+  void _startAutoReconnectTimer() {
+    if (_autoReconnectTimer == null || !_autoReconnectTimer.isActive) {
+      _autoReconnectTimer = new Timer.periodic(Duration(seconds: 1), (_) {
+        _socketConnect();
+      });
+    }
+  }
+
+  void _stopAutoReconnectTimer() {
+    if (_autoReconnectTimer != null) _autoReconnectTimer.cancel();
+  }
+
+  void _onMessageReceived(String serverMessage) {
+    //print('Barkino is still alive');
+    // if (_healthCheckTimer != null) _healthCheckTimer.cancel();
+    // _healthCheckTimer = new Timer(Duration(seconds: 5), () {
+    //   print('Barkino is dead. Switching off websocket');
+    //   _socketDisconnect();
+    // });
+
+    if (serverMessage.startsWith('#getTemp;')) {
+      String value = serverMessage.split(';')[1];
+      setState(() => _temperature = double.tryParse(value));
+    } else {
+      setState(() => logMessages.add(serverMessage));
     }
   }
 
@@ -171,7 +214,7 @@ class _MyHomePageState extends State<MyHomePage> {
     webSocket.send('#led;off;\n');
   }
 
-  void _getTemperature(int sensorIndex) {
+  void _getTemperature({int sensorIndex}) {
     if (_isSocketConnected) {
       try {
         webSocket.send('#sensors;${sensorIndex.toString()};getTemp;\n');
@@ -194,11 +237,10 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _onSocketConnectionButtonPressed() {
     if (_isSocketConnected) {
-      _autoReconnectSocket = false;
+      _isManuallyDisconnected = true;
       _socketDisconnect();
-    }
-    else {
-      _autoReconnectSocket = true;
+    } else {
+      _isManuallyDisconnected = false;
       _socketConnect();
     }
   }
@@ -297,13 +339,21 @@ class _MyHomePageState extends State<MyHomePage> {
                     onChanged: _handleNewIp,
                   ),
                 ),
+                // RaisedButton(
+                //   child: Text(
+                //     _isSocketConnected ? "Disconnect" : "Connect",
+                //     style: TextStyle(color: Colors.white, fontSize: 20.0),
+                //   ),
+                //   color: _isSocketConnected ? Colors.red : Colors.blue,
+                //   onPressed: _onSocketConnectionButtonPressed,
+                // ),
                 RaisedButton(
                   child: Text(
-                    _isSocketConnected ? "Disconnect" : "Connect",
+                    _isSocketConnected ? "Connected" : "Disconnected",
                     style: TextStyle(color: Colors.white, fontSize: 20.0),
                   ),
-                  color: _isSocketConnected ? Colors.red : Colors.blue,
-                  onPressed: _onSocketConnectionButtonPressed,
+                  color: _isSocketConnected ? Colors.green : Colors.red,
+                  onPressed: () {},
                 ),
               ],
             ),
@@ -328,7 +378,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 !_isPasturaEjected ? "Eject Pastura" : "Reset pastura",
                 style: TextStyle(color: Colors.white, fontSize: 20.0),
               ),
-              color: Colors.green,
+              color: Colors.blue,
               onPressed: !_isPasturaEjected ? _ejectPastura : _resetPastura,
             ),
             // Container(
@@ -411,7 +461,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 "Switch ${_isLedOn ? "off" : "on"} LED!",
                 style: TextStyle(color: Colors.white, fontSize: 20.0),
               ),
-              color: Colors.green,
+              color: _isLedOn ? Colors.red : Colors.green,
               onPressed: _isLedOn ? _switchOffLed : _switchOnLed,
             ),
             TemperatureSensor(

@@ -34,6 +34,7 @@ int tempSensorResolution = 10;
 
 WebServer server;
 WebSocketsServer webSocket = WebSocketsServer(81);
+bool isSocketConnected = false;
 
 // Global variables
 char commandSeparator = ';';
@@ -235,15 +236,26 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 {
   if (type == WStype_CONNECTED)
   {
-    // Save the last time healtcheck was received
-    previousHealtCheck = millis();
+    if (!isSocketConnected) {
+      // Save the last time healtcheck was received
+      previousHealtCheck = millis();
 
-    String payload = "Hi! My name is Barkino.";
-    Serial.println("WebSocket client connected.");
-    webSocket.broadcastTXT(payload);
+      String payload = "Hi! My name is Barkino.";
+      Serial.println("WebSocket client connected.");
+      webSocket.broadcastTXT(payload);
+      isSocketConnected = true;
+    }
+    else
+    {
+      // Save the last time healtcheck was received
+      previousHealtCheck = millis();
+
+      Serial.println("WebSocket client already connected.");
+    }
   }
   else if (type == WStype_DISCONNECTED)
   {
+    isSocketConnected = false;
     previousHealtCheck = 0;
 
     Serial.println("WebSocket client disconnected, stopping motors");
@@ -251,6 +263,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
   }
   else if (type == WStype_ERROR)
   {
+    isSocketConnected = false;
     previousHealtCheck = 0;
 
     Serial.println("WebSocket client error, stopping motors");

@@ -81,17 +81,19 @@ class WebSocketsNotifications {
         _isOn = true;
         isOn.add(_isOn);
 
-        _channel.stream
-            .listen((message) => _onReceptionOfMessageFromServer(message),
-                onError: (error) {
-          print('onError');
-          _isOn = false;
-          isOn.add(_isOn);
-        }, onDone: () {
-          print('onDone');
-          _isOn = false;
-          isOn.add(_isOn);
-        }, cancelOnError: true);
+        _channel.stream.listen(
+          (message) => _onReceptionOfMessageFromServer(message),
+          onError: (error) {
+            print('onError');
+            _isOn = false;
+            isOn.add(_isOn);
+          },
+          onDone: () {
+            print('onDone');
+            _isOn = false;
+            isOn.add(_isOn);
+          },
+        );
       } catch (e) {
         print(
             'Error happened when opening a new websocket connection. ${e.toString()}');
@@ -125,7 +127,7 @@ class WebSocketsNotifications {
   send(String message) {
     if (_channel != null) {
       if (_channel.sink != null && _isOn) {
-        print('Sending message: $message');
+        //print('Sending message: $message');
         _channel.sink.add(message);
       } else {
         print(

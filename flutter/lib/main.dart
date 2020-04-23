@@ -46,8 +46,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   List<String> logMessages = new List<String>();
   var logMessageTextController = TextEditingController();
-  var _temperature;
-  int controllerType = 0;
+  double _temperature;
+  int _controllerType = 0;
 
   bool _autoReconnectSocket = true;
   bool _isManuallyDisconnected = false;
@@ -72,15 +72,11 @@ class _MyHomePageState extends State<MyHomePage> {
     onDirectionChanged: _onDirectionChanged,
     controllerType: 0,
   );
+
   final DirectionController pad = DirectionController(
     onDirectionChanged: _onDirectionChanged,
     controllerType: 1,
   );
-
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: wsServerAddress);
-  }
 
   void _wifiConnect() {
     if (!_isWiFiConnecting) {
@@ -132,7 +128,7 @@ class _MyHomePageState extends State<MyHomePage> {
         serverAddress: wsServerAddress,
         serverPort: wsServerPort,
         timeout: Duration(seconds: 3),
-        pingInterval: Duration(seconds: 1),
+        pingInterval: Duration(milliseconds: 250),
         listener: _onMessageReceived);
     webSocket.isOn.stream.listen((isConnected) {
       isConnected ? _onSocketConnectionSuccess() : _onSocketConnectionClosed();
@@ -149,7 +145,7 @@ class _MyHomePageState extends State<MyHomePage> {
       _statusTimer = new Timer.periodic(Duration(seconds: 1), (timer) {
         if (_isSocketConnected) {
           //webSocket.send('#healthcheck;\n');
-          //_getTemperature(sensorIndex: 1);
+          _getTemperature(sensorIndex: 1);
         }
       });
     }
@@ -200,7 +196,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  _handleNewIp(String value) {
+  void _handleNewIp(String value) {
     setState(() => wsServerAddress = value);
   }
 
@@ -298,10 +294,16 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: wsServerAddress);
+  }
+
+  @override
   void dispose() {
+    super.dispose();
     _controller.dispose();
     _socketDisconnect();
-    super.dispose();
   }
 
   @override
@@ -315,6 +317,9 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: <Widget>[
+            SizedBox(
+              height: 8,
+            ),
             RaisedButton(
               child: Text(
                 !_isWiFiConnected ? "Connect WiFi" : "Re-connect WiFi",
@@ -357,19 +362,19 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ],
             ),
-            controllerType == 0 ? joystick : pad, // DirectionController
+            _controllerType == 0 ? joystick : pad,
             RaisedButton(
               child: Text(
-                controllerType == 1 ? "Show Joystick" : "Show Frecce",
+                _controllerType == 1 ? "Show Joystick" : "Show Frecce",
                 style: TextStyle(color: Colors.white, fontSize: 20.0),
               ),
               color: Colors.blue,
               onPressed: () {
                 setState(() {
-                  if (controllerType == 1)
-                    controllerType = 0;
+                  if (_controllerType == 1)
+                    _controllerType = 0;
                   else
-                    controllerType = 1;
+                    _controllerType = 1;
                 });
               },
             ),
@@ -465,7 +470,7 @@ class _MyHomePageState extends State<MyHomePage> {
               onPressed: _isLedOn ? _switchOffLed : _switchOnLed,
             ),
             TemperatureSensor(
-              value: _isSocketConnected ? _temperature.toString() : null,
+              value: _temperature,
             ),
             LogMessages(
               messagesList: logMessages,

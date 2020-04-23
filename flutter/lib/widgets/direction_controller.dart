@@ -33,6 +33,7 @@ class DirectionController extends StatelessWidget {
         break;
       default:
     }
+    
     this.onDirectionChanged(degrees, distance);
   }
 

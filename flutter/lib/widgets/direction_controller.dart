@@ -4,15 +4,17 @@ import 'package:control_pad/views/joystick_view.dart';
 import 'package:control_pad/views/pad_button_view.dart';
 
 import '../utils.dart';
+import '../models/motors_speed.dart';
 
 class DirectionController extends StatelessWidget {
   final Function onDirectionChanged;
   // type 0 = Joystick, type 1 = arrows
   final int controllerType;
 
-  const DirectionController(
-      {@required this.onDirectionChanged,
-      this.controllerType,});
+  const DirectionController({
+    @required this.onDirectionChanged,
+    this.controllerType,
+  });
 
   void _onPadButtonPressed(int buttonPressed, var gesture) {
     double distance = 1;
@@ -33,8 +35,18 @@ class DirectionController extends StatelessWidget {
         break;
       default:
     }
+
+    MotorsSpeed.setMotorsSpeedFromPad(degrees, distance);
+
+    this.onDirectionChanged();
+  }
+
+  void _onJoypadChanged(double degrees, double distance) {
+    //double distanceShort = (distance * 10).floor() / 10;
+
+    MotorsSpeed.setMotorsSpeedFromPad(degrees, distance);
     
-    this.onDirectionChanged(degrees, distance);
+    this.onDirectionChanged();
   }
 
   @override
@@ -45,7 +57,7 @@ class DirectionController extends StatelessWidget {
         padding: EdgeInsets.all(20),
         color: Colors.transparent,
         child: JoystickView(
-          onDirectionChanged: onDirectionChanged,
+          onDirectionChanged: _onJoypadChanged,
           interval: Duration(milliseconds: 300),
         ),
       );

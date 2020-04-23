@@ -1,13 +1,15 @@
-import 'package:barkino/widgets/direction_controller.dart';
-import 'package:flutter/material.dart';
 import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:gateway/gateway.dart';
 import 'package:wifi/wifi.dart';
 
-import './widgets/log_messages.dart';
-import './widgets/temperature.dart';
 import './websockets.dart';
 import './utils.dart';
+import './widgets/direction_controller.dart';
+import './widgets/log_messages.dart';
+import './widgets/temperature.dart';
+import './models/motors_speed.dart';
 
 void main() => runApp(MyApp());
 
@@ -47,7 +49,7 @@ class _MyHomePageState extends State<MyHomePage> {
   List<String> logMessages = new List<String>();
   var logMessageTextController = TextEditingController();
   double _temperature;
-  int _controllerType = 0;
+  int _controllerType = 1;
 
   bool _autoReconnectSocket = true;
   bool _isManuallyDisconnected = false;
@@ -287,10 +289,8 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  static void _onDirectionChanged(double degrees, double normalizedDistance) {
-    int degreesInt = degrees.floor();
-    double distanceShort = (normalizedDistance * 10).floor() / 10;
-    webSocket.send('#setMotorsSpeedFromPad;$degreesInt;$distanceShort;\n');
+  static void _onDirectionChanged() {
+    webSocket.send('#setMotorsSpeed;${MotorsSpeed.left};${MotorsSpeed.right};\n');
   }
 
   @override

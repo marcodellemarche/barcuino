@@ -4,32 +4,60 @@ import 'package:control_pad/views/joystick_view.dart';
 import 'package:control_pad/views/pad_button_view.dart';
 
 import '../utils.dart';
+import '../models/motors_speed.dart';
 
-class DirectionController extends StatefulWidget {
+class DirectionController extends StatelessWidget {
   final Function onDirectionChanged;
-  final Function onPadButtonPressed;
   // type 0 = Joystick, type 1 = arrows
   final int controllerType;
 
-  DirectionController(
-      {@required this.onDirectionChanged,
-      this.controllerType,
-      this.onPadButtonPressed});
+  const DirectionController({
+    @required this.onDirectionChanged,
+    this.controllerType,
+  });
 
-  @override
-  _DirectionControllerState createState() => _DirectionControllerState();
-}
+  void _onPadButtonPressed(int buttonPressed, var gesture) {
+    double distance = 1;
+    double degrees;
+    switch (buttonPressed) {
+      case ButtonPressed.LEFT:
+        degrees = 270;
+        break;
+      case ButtonPressed.UPWARD:
+        degrees = 0;
+        break;
+      case ButtonPressed.RIGHT:
+        degrees = 90;
+        break;
+      case ButtonPressed.STOP:
+        degrees = 0;
+        distance = 0;
+        break;
+      default:
+    }
 
-class _DirectionControllerState extends State<DirectionController> {
+    MotorsSpeed.setMotorsSpeedFromPad(degrees, distance);
+
+    this.onDirectionChanged();
+  }
+
+  void _onJoypadChanged(double degrees, double distance) {
+    //double distanceShort = (distance * 10).floor() / 10;
+
+    MotorsSpeed.setMotorsSpeedFromPad(degrees, distance);
+    
+    this.onDirectionChanged();
+  }
+
   @override
   Widget build(BuildContext context) {
     //print('direction_controller build');
-    if (widget.controllerType == null || widget.controllerType == 0) {
+    if (controllerType == null || controllerType == 0) {
       return Container(
         padding: EdgeInsets.all(20),
         color: Colors.transparent,
         child: JoystickView(
-          onDirectionChanged: widget.onDirectionChanged,
+          onDirectionChanged: _onJoypadChanged,
           interval: Duration(milliseconds: 300),
         ),
       );
@@ -37,7 +65,7 @@ class _DirectionControllerState extends State<DirectionController> {
       return Container(
         padding: EdgeInsets.all(20),
         child: PadButtonsView(
-          padButtonPressedCallback: widget.onPadButtonPressed,
+          padButtonPressedCallback: _onPadButtonPressed,
           buttons: const [
             PadButtonItem(
               index: ButtonPressed.RIGHT,

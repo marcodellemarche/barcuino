@@ -51,10 +51,12 @@ double minMotorSpeed = 200; // sotto questa velocità i motori fischiano ma non 
 double maxTurningSpeed = 1023;
 // WiFiServer wifiServer(80);
 unsigned long previousHealtCheck = 0;
-unsigned long maxTimeInterval = 5000; // 5 seconds
+unsigned long maxTimeInterval = 1000; // 1 seconds
 
 const char *myPassword = "ciaociao";
 const char *mySsid = "BarkiFi";
+
+long disconnectionCounter = 0;
 
 // IPAddress local_ip(192,168,1,4);
 // IPAddress gateway(192,168,1,1);
@@ -236,6 +238,8 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 {
   if (type == WStype_CONNECTED)
   {
+    ledRgbGreen.on();
+
     if (!isSocketConnected) {
       // Save the last time healtcheck was received
       previousHealtCheck = millis();
@@ -255,19 +259,38 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
   }
   else if (type == WStype_DISCONNECTED)
   {
+    ledRgbGreen.off();
+
     isSocketConnected = false;
     previousHealtCheck = 0;
 
-    Serial.println("WebSocket client disconnected, stopping motors");
-    stopMotors();
+    disconnectionCounter++;
+
+    Serial.print("WebSocket client disconnection: ");Serial.println(disconnectionCounter);
+    // due to some connection errors, autoresolved with auto-reconnect, I don't stop motors suddenly
+    //stopMotors();
   }
   else if (type == WStype_ERROR)
   {
+    ledRgbGreen.off();
+
     isSocketConnected = false;
     previousHealtCheck = 0;
 
     Serial.println("WebSocket client error, stopping motors");
     stopMotors();
+  }
+  else if (type == WStype_PING) {
+    // Save the last time healtcheck was received
+    previousHealtCheck = millis();
+
+    //Serial.print("<- ");Serial.print("WStype_PING ");Serial.println(millis());
+  }
+  else if (type == WStype_PONG) {
+    // Save the last time healtcheck was received
+    previousHealtCheck = millis();
+
+    //Serial.print("<- ");Serial.print("WStype_PONG ");Serial.println(millis());
   }
   else if (type == WStype_TEXT)
   {
@@ -339,7 +362,8 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         else if (type == "off")
         {
           ledBack.off();
-          ledRgbGreen.off();
+          // ledRgbRed.on(); // used to check start correctly
+          // ledRgbGreen.off(); // used to check websocket connectedion
           ledRgbBlue.off();
         }
         else if (type == "on")
@@ -490,6 +514,12 @@ void setup()
 void loop()
 {
   if(WiFi.softAPgetStationNum() > 0) {
+    if (webSocket.connectedClients() > 0) {
+      ledRgbGreen.on();
+    }
+    else {
+      ledRgbGreen.off();
+    }
     webSocket.loop();
     delay(1);
     server.handleClient();

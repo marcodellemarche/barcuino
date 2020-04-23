@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <AnalogController.h>
 
-#define MAX_INTENSITY_RED 700
+#define MAX_INTENSITY_RED 850
 #define MAX_INTENSITY_GREEN 800
 #define MAX_INTENSITY_BLUE 900
 #define MAX_INTENSITY_BACK 1023

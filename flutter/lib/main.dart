@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:gateway/gateway.dart';
-import 'package:wifi/wifi.dart';
+import 'package:connectivity/connectivity.dart';
 
 import './websockets.dart';
 import './utils.dart';
@@ -64,7 +64,7 @@ class _MyHomePageState extends State<MyHomePage> {
   String password = 'ciaociao';
 
   TextEditingController _controller;
-
+  StreamSubscription _onWifiChanged;
   bool _isWiFiConnected = false;
   bool _isWiFiConnecting = false;
   String showMessage = '';
@@ -79,6 +79,8 @@ class _MyHomePageState extends State<MyHomePage> {
     onDirectionChanged: _onDirectionChanged,
     controllerType: 1,
   );
+
+
 
   void _wifiConnect() {
     if (!_isWiFiConnecting) {
@@ -297,12 +299,17 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     _controller = TextEditingController(text: wsServerAddress);
+    _onWifiChanged = Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
+      // Got a new connectivity status!
+      
+    });
   }
 
   @override
   void dispose() {
     super.dispose();
     _controller.dispose();
+    _onWifiChanged.cancel();
     _socketDisconnect();
   }
 

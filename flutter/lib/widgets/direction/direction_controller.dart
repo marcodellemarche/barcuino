@@ -22,7 +22,7 @@ class DirectionController extends StatelessWidget {
       children: <Widget>[
         Column(
           children: <Widget>[
-            DirectionAdjustment(
+            DirectionAdjustment2(
               startValue: MotorsSpeed.leftAdjustment.toDouble(),
               onAdjustmentDone: (double newValue) {
                 MotorsSpeed.setAdjstment(left: newValue);
@@ -41,7 +41,7 @@ class DirectionController extends StatelessWidget {
         ),
         Column(
           children: <Widget>[
-            DirectionAdjustment(
+            DirectionAdjustment2(
               startValue: MotorsSpeed.rightAdjustment.toDouble(),
               onAdjustmentDone: (double newValue) {
                 MotorsSpeed.setAdjstment(right: newValue);

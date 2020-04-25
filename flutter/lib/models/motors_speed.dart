@@ -4,17 +4,25 @@ class MotorsSpeed {
   static int minSpeed = 250;
   static int maxSpeed = 1023;
 
-  static int left;
-  static int right;
+  static int _left = 0;
+  static int _right = 0;
 
-  static int leftAdjustment;
-  static int rightAdjustment;
+  static int leftAdjustment = 0;
+  static int rightAdjustment = 0;
 
-  static void setMotorsSpeed(int left, int right) {
-    left = left + (MotorsSpeed.leftAdjustment ?? 0);
-    right = right + (MotorsSpeed.rightAdjustment ?? 0);
-    MotorsSpeed.left = left != null && left > minSpeed ? left : 0;
-    MotorsSpeed.right = right != null && right > minSpeed ? right : 0;
+  static int getLeft() {
+    int result = _left - (MotorsSpeed.leftAdjustment ?? 0);
+    return result != null && result > minSpeed ? result : 0;
+  }
+
+  static int getRight() {
+    int result = _right - (MotorsSpeed.rightAdjustment ?? 0);
+    return result != null && result > minSpeed ? result : 0;
+  }
+
+  static void setMotorsSpeed({int left, int right}) {
+    if (left != null) _left = left;
+    if (right != null) _right = right;
   }
 
   static void setMotorsSpeedFromPad(double degrees, double distance) {
@@ -34,11 +42,11 @@ class MotorsSpeed {
     int left = (leftSpeed * distance).round();
     int right = (rightSpeed * distance).round();
 
-    setMotorsSpeed(left, right);
+    setMotorsSpeed(left: left, right: right);
   }
 
-  static void setAdjstment(int left, int right) {
-    MotorsSpeed.leftAdjustment = left;
-    MotorsSpeed.rightAdjustment = right;
+  static void setAdjstment({int left, int right}) {
+    if (left != null) MotorsSpeed.leftAdjustment = left;
+    if (right != null) MotorsSpeed.rightAdjustment = right;
   }
 }

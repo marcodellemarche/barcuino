@@ -290,7 +290,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   static void _onDirectionChanged() {
-    webSocket.send('#setMotorsSpeed;${MotorsSpeed.left};${MotorsSpeed.right};\n');
+    webSocket.send('#setMotorsSpeed;${MotorsSpeed.getLeft()};${MotorsSpeed.getRight()};\n');
   }
 
   @override

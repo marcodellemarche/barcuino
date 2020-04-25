@@ -1,10 +1,8 @@
+import 'package:barkino/models/motors_speed.dart';
 import 'package:flutter/material.dart';
-import 'package:control_pad/models/pad_button_item.dart';
-import 'package:control_pad/views/joystick_view.dart';
-import 'package:control_pad/views/pad_button_view.dart';
 
-import '../utils.dart';
-import '../models/motors_speed.dart';
+import '../widgets/direction_adjustment.dart';
+import '../widgets/direction_input.dart';
 
 class DirectionController extends StatelessWidget {
   final Function onDirectionChanged;
@@ -16,87 +14,46 @@ class DirectionController extends StatelessWidget {
     this.controllerType,
   });
 
-  void _onPadButtonPressed(int buttonPressed, var gesture) {
-    double distance = 1;
-    double degrees;
-    switch (buttonPressed) {
-      case ButtonPressed.LEFT:
-        degrees = 270;
-        break;
-      case ButtonPressed.UPWARD:
-        degrees = 0;
-        break;
-      case ButtonPressed.RIGHT:
-        degrees = 90;
-        break;
-      case ButtonPressed.STOP:
-        degrees = 0;
-        distance = 0;
-        break;
-      default:
-    }
-
-    MotorsSpeed.setMotorsSpeedFromPad(degrees, distance);
-
-    this.onDirectionChanged();
-  }
-
-  void _onJoypadChanged(double degrees, double distance) {
-    //double distanceShort = (distance * 10).floor() / 10;
-
-    MotorsSpeed.setMotorsSpeedFromPad(degrees, distance);
-    
-    this.onDirectionChanged();
-  }
-
   @override
   Widget build(BuildContext context) {
-    //print('direction_controller build');
-    if (controllerType == null || controllerType == 0) {
-      return Container(
-        padding: EdgeInsets.all(20),
-        color: Colors.transparent,
-        child: JoystickView(
-          onDirectionChanged: _onJoypadChanged,
-          interval: Duration(milliseconds: 300),
-        ),
-      );
-    } else {
-      return Container(
-        padding: EdgeInsets.all(20),
-        child: PadButtonsView(
-          padButtonPressedCallback: _onPadButtonPressed,
-          buttons: const [
-            PadButtonItem(
-              index: ButtonPressed.RIGHT,
-              buttonIcon: Icon(Icons.arrow_forward, size: 30),
-              backgroundColor: Colors.white54,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        Column(
+          children: <Widget>[
+            DirectionAdjustment(
+              startValue: MotorsSpeed.leftAdjustment.toDouble(),
+              onAdjustmentDone: (double newValue) {
+                MotorsSpeed.setAdjstment(left: MotorsSpeed.maxSpeed - newValue.floor());
+                onDirectionChanged();
+              },
             ),
-            PadButtonItem(
-              index: ButtonPressed.STOP,
-              buttonIcon: Icon(
-                Icons.stop,
-                size: 40,
-              ),
-              backgroundColor: Colors.white54,
-              pressedColor: Colors.red,
-            ),
-            PadButtonItem(
-              index: ButtonPressed.LEFT,
-              buttonIcon: Icon(
-                Icons.arrow_back,
-                size: 30,
-              ),
-              backgroundColor: Colors.white54,
-            ),
-            PadButtonItem(
-              index: 3,
-              buttonIcon: Icon(Icons.arrow_upward, size: 30),
-              backgroundColor: Colors.white54,
+            Text(
+              'L',
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ],
         ),
-      );
-    }
+        DirectionInput(
+          onDirectionChanged: onDirectionChanged,
+          controllerType: controllerType,
+        ),
+        Column(
+          children: <Widget>[
+            DirectionAdjustment(
+              startValue: MotorsSpeed.rightAdjustment.toDouble(),
+              onAdjustmentDone: (double newValue) {
+                MotorsSpeed.setAdjstment(right: MotorsSpeed.maxSpeed - newValue.floor());
+                onDirectionChanged();
+              },
+            ),
+            Text(
+              'R',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            )
+          ],
+        ),
+      ],
+    );
   }
 }

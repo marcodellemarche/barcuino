@@ -21,10 +21,10 @@
 
 #define TEMP_SENSORS_BUS 18
 
-bool debug = false; // set false to avoid debug serial print
+bool debug = true; // set false to avoid debug serial print
 
-const int MAX_MOTOR_SPEED = 1023;
-const int MIN_MOTOR_SPEED = 200; // sotto questa velocità i motori fischiano ma non si muove
+int MAX_MOTOR_SPEED = 1023;
+int MIN_MOTOR_SPEED = 250; // sotto questa velocità i motori fischiano ma non girano
 
 // temp sensor
 OneWire oneWire(TEMP_SENSORS_BUS);

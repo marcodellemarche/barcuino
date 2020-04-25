@@ -22,9 +22,10 @@
 #define TEMP_SENSORS_BUS 18
 
 bool debug = true; // set false to avoid debug serial print
+bool debugSocket = false; // set false to avoid debug serial print
 
-int MAX_MOTOR_SPEED = 1023;
-int MIN_MOTOR_SPEED = 250; // sotto questa velocità i motori fischiano ma non girano
+const int MAX_MOTOR_SPEED = 1023;
+const int MIN_MOTOR_SPEED = 250; // sotto questa velocità i motori fischiano ma non si muove
 
 // temp sensor
 OneWire oneWire(TEMP_SENSORS_BUS);
@@ -57,6 +58,7 @@ const char *myPassword = "ciaociao";
 const char *mySsid = "BarkiFi";
 
 long disconnectionCounter = 0;
+long lastWifiClientCounter = 0;
 
 // IPAddress local_ip(192,168,1,4);
 // IPAddress gateway(192,168,1,1);
@@ -256,7 +258,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
       serialData.trim();
       serialData = serialData.substring(1);
 
-      if (debug)
+      if (debugSocket)
       {
         Serial.println("****************************");
         Serial.print("<- ");Serial.println(serialData);
@@ -373,7 +375,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
             goOn = false;
           }
         }
-        if (debug) {
+        if (debugSocket) {
           Serial.print("-> ");Serial.println(result);
         }
         webSocket.broadcastTXT(result);
@@ -382,7 +384,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
       {
         // Send back an healthcheck
         String payload = "healthcheck";
-        if (debug) {
+        if (debugSocket) {
           Serial.print("-> ");Serial.println(payload);
         }
         webSocket.broadcastTXT(payload);
@@ -465,13 +467,13 @@ void loop()
 {
   if (WiFi.softAPgetStationNum() > 0)
   {
-    if (webSocket.connectedClients() > 0)
-    {
-      ledRgbGreen.on();
-    }
-    else
-    {
-      ledRgbGreen.off();
+    int connectedWifiClients = webSocket.connectedClients();
+    if (lastWifiClientCounter != connectedWifiClients) {
+      lastWifiClientCounter = connectedWifiClients;
+      if (webSocket.connectedClients() > 0)
+        ledRgbGreen.on();
+      else
+        ledRgbGreen.off();
     }
     webSocket.loop();
     delay(1);

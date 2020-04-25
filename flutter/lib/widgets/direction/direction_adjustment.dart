@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../models/motors_speed.dart';
+import '../../models/motors_speed.dart';
 
 class DirectionAdjustment extends StatefulWidget {
   final Function onAdjustmentDone;
   final double startValue;
-  final double min = MotorsSpeed.minSpeed?.toDouble() ?? 0;
-  final double max = MotorsSpeed.maxSpeed?.toDouble() ?? 0;
 
   DirectionAdjustment({this.startValue, this.onAdjustmentDone});
 
@@ -15,7 +13,7 @@ class DirectionAdjustment extends StatefulWidget {
 }
 
 class _DirectionAdjustmentState extends State<DirectionAdjustment> {
-  double value = MotorsSpeed.maxSpeed?.toDouble() ?? 0;
+  double value = 1;
 
   @override
   Widget build(BuildContext context) {
@@ -31,9 +29,10 @@ class _DirectionAdjustmentState extends State<DirectionAdjustment> {
         onChangeEnd: (newValue) {
           widget.onAdjustmentDone(newValue);
         },
+        divisions: 100,
         min: 0,
-        max: widget.max,
-        label: "$value",
+        max: 1,
+        label: "${(value * 100).floor()} %",
       ),
     );
   }

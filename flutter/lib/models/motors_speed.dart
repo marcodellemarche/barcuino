@@ -7,16 +7,17 @@ class MotorsSpeed {
   static int _left = 0;
   static int _right = 0;
 
-  static int leftAdjustment = 0;
-  static int rightAdjustment = 0;
+  // 0.0 to 1.0
+  static double leftAdjustment = 1;
+  static double rightAdjustment = 1;
 
   static int getLeft() {
-    int result = _left - (MotorsSpeed.leftAdjustment ?? 0);
+    int result = (MotorsSpeed.leftAdjustment * _left).floor();
     return result != null && result > minSpeed ? result : 0;
   }
 
   static int getRight() {
-    int result = _right - (MotorsSpeed.rightAdjustment ?? 0);
+    int result = (MotorsSpeed.rightAdjustment * _right).floor();
     return result != null && result > minSpeed ? result : 0;
   }
 
@@ -45,7 +46,7 @@ class MotorsSpeed {
     setMotorsSpeed(left: left, right: right);
   }
 
-  static void setAdjstment({int left, int right}) {
+  static void setAdjstment({double left, double right}) {
     if (left != null) MotorsSpeed.leftAdjustment = left;
     if (right != null) MotorsSpeed.rightAdjustment = right;
   }

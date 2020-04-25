@@ -1,8 +1,9 @@
 import 'package:barkino/models/motors_speed.dart';
 import 'package:flutter/material.dart';
 
-import '../widgets/direction_adjustment.dart';
-import '../widgets/direction_input.dart';
+import './direction_adjustment.dart';
+// import './direction_adjustment2.dart';
+import './direction_input.dart';
 
 class DirectionController extends StatelessWidget {
   final Function onDirectionChanged;
@@ -24,7 +25,7 @@ class DirectionController extends StatelessWidget {
             DirectionAdjustment(
               startValue: MotorsSpeed.leftAdjustment.toDouble(),
               onAdjustmentDone: (double newValue) {
-                MotorsSpeed.setAdjstment(left: MotorsSpeed.maxSpeed - newValue.floor());
+                MotorsSpeed.setAdjstment(left: newValue);
                 onDirectionChanged();
               },
             ),
@@ -43,7 +44,7 @@ class DirectionController extends StatelessWidget {
             DirectionAdjustment(
               startValue: MotorsSpeed.rightAdjustment.toDouble(),
               onAdjustmentDone: (double newValue) {
-                MotorsSpeed.setAdjstment(right: MotorsSpeed.maxSpeed - newValue.floor());
+                MotorsSpeed.setAdjstment(right: newValue);
                 onDirectionChanged();
               },
             ),

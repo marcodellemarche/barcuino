@@ -6,7 +6,7 @@ import 'package:wifi/wifi.dart';
 
 import './websockets.dart';
 import './utils.dart';
-import './widgets/direction_controller.dart';
+import './widgets/direction/direction_controller.dart';
 import './widgets/log_messages.dart';
 import './widgets/temperature.dart';
 import './models/motors_speed.dart';
@@ -130,7 +130,7 @@ class _MyHomePageState extends State<MyHomePage> {
         serverAddress: wsServerAddress,
         serverPort: wsServerPort,
         timeout: Duration(seconds: 3),
-        pingInterval: Duration(milliseconds: 250),
+        pingInterval: Duration(milliseconds: 500),
         listener: _onMessageReceived);
     webSocket.isOn.stream.listen((isConnected) {
       isConnected ? _onSocketConnectionSuccess() : _onSocketConnectionClosed();

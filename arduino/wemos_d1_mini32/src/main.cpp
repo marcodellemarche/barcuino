@@ -195,6 +195,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 {
   if (type == WStype_CONNECTED)
   {
+    // Save the last time healtcheck was received
+    previousHealtCheck = millis();
+
     ledRgbGreen.on();
 
     if (!isSocketConnected)
@@ -211,6 +214,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
   }
   else if (type == WStype_DISCONNECTED)
   {
+    // Save the last time healtcheck was received
+    previousHealtCheck = millis();
+
     ledRgbGreen.off();
 
     isSocketConnected = false;
@@ -470,15 +476,14 @@ void loop()
     int connectedWifiClients = webSocket.connectedClients();
     if (lastWifiClientCounter != connectedWifiClients) {
       lastWifiClientCounter = connectedWifiClients;
+      disconnectionCounter = 0;
       if (webSocket.connectedClients() > 0)
         ledRgbGreen.on();
       else
         ledRgbGreen.off();
     }
     webSocket.loop();
-    delay(1);
-    server.handleClient();
-    delay(1);
+    // server.handleClient();
     checkHealthCheckTime();
   }
   else

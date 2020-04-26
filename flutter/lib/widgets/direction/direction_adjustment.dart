@@ -1,38 +1,73 @@
 import 'package:flutter/material.dart';
-
-import '../../models/motors_speed.dart';
+import 'package:flutter_xlider/flutter_xlider.dart';
 
 class DirectionAdjustment extends StatefulWidget {
   final Function onAdjustmentDone;
   final double startValue;
+  final double height;
 
-  DirectionAdjustment({this.startValue, this.onAdjustmentDone});
+  DirectionAdjustment({this.startValue, this.onAdjustmentDone, this.height});
 
   @override
   _DirectionAdjustmentState createState() => _DirectionAdjustmentState();
 }
 
 class _DirectionAdjustmentState extends State<DirectionAdjustment> {
-  double value = 1;
+  double _value = 100;
 
   @override
   Widget build(BuildContext context) {
-    return RotatedBox(
-      quarterTurns: 3,
-      child: Slider(
-        value: value,
-        onChanged: (newValue) {
-          setState(() {
-            value = newValue;
-          });
-        },
-        onChangeEnd: (newValue) {
-          widget.onAdjustmentDone(newValue);
-        },
-        divisions: 100,
+    return Container(
+      height: widget.height,
+      child: FlutterSlider(
+        rangeSlider: false,
         min: 0,
-        max: 1,
-        label: "${(value * 100).floor()} %",
+        max: 100,
+        axis: Axis.vertical,
+        rtl: true,
+        values: [_value],
+        selectByTap: true,
+        handlerWidth: 20,
+        tooltip: FlutterSliderTooltip(
+
+          boxStyle: FlutterSliderTooltipBox(
+            decoration: BoxDecoration(
+              color: Theme.of(context).accentColor,
+              borderRadius: BorderRadius.circular(15),
+            ),
+          ),
+          textStyle: TextStyle(
+            color: Colors.white,
+          ),
+          format: (String val) {
+            double valueNormalized = num.parse(val);
+            return valueNormalized.toStringAsFixed(0);
+          },
+          rightSuffix: Text(
+            ' %',
+            style: TextStyle(
+              color: Colors.white,
+            ),
+          ),
+        ),
+        trackBar: FlutterSliderTrackBar(
+          inactiveTrackBarHeight: 2,
+          activeTrackBarHeight: 2,
+        ),
+        handler: FlutterSliderHandler(
+          child: Container(),
+          decoration: BoxDecoration(
+              color: Theme.of(context).accentColor, shape: BoxShape.circle),
+        ),
+        // onDragStarted: (_, __, ___) {
+        //   // TODO add haptic feedback
+        //   Feedback.forTap(context);
+        // },
+        onDragCompleted: (handlerIndex, newValue, _) {
+          double valueNormalized =
+              num.parse((newValue / 100).toStringAsFixed(2));
+          widget.onAdjustmentDone(valueNormalized);
+        },
       ),
     );
   }

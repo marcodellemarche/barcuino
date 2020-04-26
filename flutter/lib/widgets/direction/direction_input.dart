@@ -10,10 +10,12 @@ class DirectionInput extends StatelessWidget {
   final Function onDirectionChanged;
   // type 0 = Joystick, type 1 = arrows
   final int controllerType;
+  final double size;
 
   const DirectionInput({
     @required this.onDirectionChanged,
     this.controllerType,
+    this.size
   });
 
   void _onPadButtonPressed(int buttonPressed, var gesture) {
@@ -61,6 +63,7 @@ class DirectionInput extends StatelessWidget {
         padding: EdgeInsets.all(20),
         color: Colors.transparent,
         child: JoystickView(
+          size: size,
           onDirectionChanged: _onJoypadChanged,
           interval: Duration(milliseconds: 300),
         ),
@@ -69,6 +72,7 @@ class DirectionInput extends StatelessWidget {
       return Container(
         padding: EdgeInsets.all(20),
         child: PadButtonsView(
+          size: size,
           padButtonPressedCallback: _onPadButtonPressed,
           buttons: const [
             PadButtonItem(

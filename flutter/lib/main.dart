@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_xlider/flutter_xlider.dart';
 import 'package:gateway/gateway.dart';
 import 'package:wifi/wifi.dart';
 
@@ -370,6 +371,8 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
               color: Colors.blue,
               onPressed: () {
+                // TODO add haptic feedback
+                //Feedback.forTap(context);
                 setState(() {
                   if (_controllerType == 1)
                     _controllerType = 0;

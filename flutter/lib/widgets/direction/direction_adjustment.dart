@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_xlider/flutter_xlider.dart';
+// import 'package:flutter_xlider/flutter_xlider.dart';
+import '../../packages/flutter_xlider.dart';
 
 class DirectionAdjustment extends StatefulWidget {
   final Function onAdjustmentDone;
@@ -26,10 +27,13 @@ class _DirectionAdjustmentState extends State<DirectionAdjustment> {
         axis: Axis.vertical,
         rtl: true,
         values: [_value],
-        selectByTap: true,
+        selectByTap: false,
         handlerWidth: 20,
+        handlerAnimation: FlutterSliderHandlerAnimation(
+          scale: 1,
+        ),
         tooltip: FlutterSliderTooltip(
-
+          disableToolTipAnimation: true,
           boxStyle: FlutterSliderTooltipBox(
             decoration: BoxDecoration(
               color: Theme.of(context).accentColor,

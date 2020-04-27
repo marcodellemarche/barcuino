@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_xlider/flutter_xlider.dart';
+// import 'package:flutter_xlider/flutter_xlider.dart';
 import 'package:gateway/gateway.dart';
 import 'package:wifi/wifi.dart';
 

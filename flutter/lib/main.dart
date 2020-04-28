@@ -1,12 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+// import 'package:flutter_xlider/flutter_xlider.dart';
 import 'package:gateway/gateway.dart';
 import 'package:wifi/wifi.dart';
 
 import './websockets.dart';
 import './utils.dart';
-import './widgets/direction_controller.dart';
+import './widgets/direction/direction_controller.dart';
 import './widgets/log_messages.dart';
 import './widgets/temperature.dart';
 import './models/motors_speed.dart';
@@ -68,6 +69,7 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _isWiFiConnected = false;
   bool _isWiFiConnecting = false;
   String showMessage = '';
+  Future<bool> _dataLoaded;
 
   // set as static objects to avoid re-building on each timer trigger
   final DirectionController joystick = DirectionController(
@@ -130,7 +132,7 @@ class _MyHomePageState extends State<MyHomePage> {
         serverAddress: wsServerAddress,
         serverPort: wsServerPort,
         timeout: Duration(seconds: 3),
-        pingInterval: Duration(milliseconds: 250),
+        pingInterval: Duration(milliseconds: 500),
         listener: _onMessageReceived);
     webSocket.isOn.stream.listen((isConnected) {
       isConnected ? _onSocketConnectionSuccess() : _onSocketConnectionClosed();
@@ -290,12 +292,14 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   static void _onDirectionChanged() {
-    webSocket.send('#setMotorsSpeed;${MotorsSpeed.left};${MotorsSpeed.right};\n');
+    webSocket.send(
+        '#setMotorsSpeed;${MotorsSpeed.getLeft()};${MotorsSpeed.getRight()};\n');
   }
 
   @override
   void initState() {
     super.initState();
+    _dataLoaded = MotorsSpeed.getFromSettings();
     _controller = TextEditingController(text: wsServerAddress);
   }
 
@@ -362,7 +366,17 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ],
             ),
-            _controllerType == 0 ? joystick : pad,
+            FutureBuilder(
+              future: _dataLoaded,
+              builder: (BuildContext futureContext, AsyncSnapshot<bool> snapshot) {
+                if (snapshot.hasData) {
+                  return _controllerType == 0 ? joystick : pad;
+                }
+                else {
+                  return Text('Loading...');
+                }
+              },
+            ),
             RaisedButton(
               child: Text(
                 _controllerType == 1 ? "Show Joystick" : "Show Frecce",
@@ -370,6 +384,8 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
               color: Colors.blue,
               onPressed: () {
+                // TODO add haptic feedback
+                //Feedback.forTap(context);
                 setState(() {
                   if (_controllerType == 1)
                     _controllerType = 0;

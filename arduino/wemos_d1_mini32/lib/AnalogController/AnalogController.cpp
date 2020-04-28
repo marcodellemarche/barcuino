@@ -6,10 +6,8 @@
 #define MAX_INTENSITY_BLUE 900
 #define MAX_INTENSITY_BACK 1023
 
-#define MAX_ANALOG_WRITE 1023
-
 double frequency = 5000;
-uint8_t resolution = 13;
+uint8_t resolution = 10;
 
 AnalogController::AnalogController()
 {
@@ -17,7 +15,7 @@ AnalogController::AnalogController()
   isOn = false;
 }
 
-uint8_t AnalogController::attach(int pin, AnalogType type, int channel)
+uint8_t AnalogController::attach(int pin, AnalogType type, int channel, uint32_t maxValue)
 {
   if (!_attached)
   {
@@ -27,6 +25,7 @@ uint8_t AnalogController::attach(int pin, AnalogType type, int channel)
     _pin = pin;
     _type = type;
     _channel = channel;
+    _maxValue = maxValue;
 
     ledcSetup(channel, frequency, resolution);
     ledcAttachPin(_pin, channel);
@@ -74,6 +73,14 @@ void analogControllerWrite(uint8_t channel, uint32_t value, uint32_t valueMax)
     uint32_t levels = pow(2, resolution);
     uint32_t duty = ((levels - 1) / valueMax) * min(value, valueMax);
 
+    // Serial.println("****************");
+    // Serial.print("value ");Serial.println(value);
+    // Serial.print("valueMax ");Serial.println(valueMax);
+    // Serial.print("resolution ");Serial.println(resolution);
+    // Serial.print("levels ");Serial.println(levels);
+    // Serial.print("duty ");Serial.println(duty);
+    // Serial.println("****************");
+
     // write duty to LEDC
     ledcWrite(channel, duty);
   }
@@ -107,7 +114,7 @@ void AnalogController::setIntensity(int intensity)
       return;
       break;
     }
-    analogControllerWrite(_channel, intensity, _valueMax);
+    analogControllerWrite(_channel, intensity, _maxValue);
     isOn = intensity > 0 ? true : false;
   }
 }

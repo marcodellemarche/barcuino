@@ -3,40 +3,46 @@ import 'package:control_pad/models/pad_button_item.dart';
 import 'package:control_pad/views/joystick_view.dart';
 import 'package:control_pad/views/pad_button_view.dart';
 
-import '../utils.dart';
-import '../models/motors_speed.dart';
+import '../../utils.dart';
+import '../../models/motors_speed.dart';
 
-class DirectionController extends StatelessWidget {
+class DirectionInput extends StatelessWidget {
   final Function onDirectionChanged;
   // type 0 = Joystick, type 1 = arrows
   final int controllerType;
+  final double size;
 
-  const DirectionController({
+  const DirectionInput({
     @required this.onDirectionChanged,
     this.controllerType,
+    this.size
   });
 
   void _onPadButtonPressed(int buttonPressed, var gesture) {
-    double distance = 1;
-    double degrees;
+    int left;
+    int right;
+
     switch (buttonPressed) {
       case ButtonPressed.LEFT:
-        degrees = 270;
+        left = MotorsSpeed.maxSpeed;
+        right = 0;
         break;
       case ButtonPressed.UPWARD:
-        degrees = 0;
+        left = MotorsSpeed.maxSpeed;
+        right = MotorsSpeed.maxSpeed;
         break;
       case ButtonPressed.RIGHT:
-        degrees = 90;
+        left = 0;
+        right = MotorsSpeed.maxSpeed;
         break;
       case ButtonPressed.STOP:
-        degrees = 0;
-        distance = 0;
+        left = 0;
+        right = 0;
         break;
       default:
     }
 
-    MotorsSpeed.setMotorsSpeedFromPad(degrees, distance);
+    MotorsSpeed.setMotorsSpeed(left: left, right: right);
 
     this.onDirectionChanged();
   }
@@ -57,6 +63,7 @@ class DirectionController extends StatelessWidget {
         padding: EdgeInsets.all(20),
         color: Colors.transparent,
         child: JoystickView(
+          size: size,
           onDirectionChanged: _onJoypadChanged,
           interval: Duration(milliseconds: 300),
         ),
@@ -65,6 +72,7 @@ class DirectionController extends StatelessWidget {
       return Container(
         padding: EdgeInsets.all(20),
         child: PadButtonsView(
+          size: size,
           padButtonPressedCallback: _onPadButtonPressed,
           buttons: const [
             PadButtonItem(

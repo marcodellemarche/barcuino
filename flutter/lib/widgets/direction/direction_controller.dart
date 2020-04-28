@@ -31,6 +31,7 @@ class DirectionController extends StatelessWidget {
               startValue: MotorsSpeed.leftAdjustment.toDouble(),
               onAdjustmentDone: (double newValue) {
                 MotorsSpeed.setAdjstment(left: newValue);
+                MotorsSpeed.saveToSettings().then((_) {MotorsSpeed.getFromSettings();});
                 onDirectionChanged();
               },
             ),
@@ -52,6 +53,7 @@ class DirectionController extends StatelessWidget {
               startValue: MotorsSpeed.rightAdjustment.toDouble(),
               onAdjustmentDone: (double newValue) {
                 MotorsSpeed.setAdjstment(right: newValue);
+                MotorsSpeed.saveToSettings().then((_) {MotorsSpeed.getFromSettings();});
                 onDirectionChanged();
               },
             ),

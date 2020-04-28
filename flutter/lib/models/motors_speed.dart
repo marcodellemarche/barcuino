@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'package:barkino/models/settings.dart';
+
 class MotorsSpeed {
   static int minSpeed = 250;
   static int maxSpeed = 1023;
@@ -49,5 +51,37 @@ class MotorsSpeed {
   static void setAdjstment({double left, double right}) {
     if (left != null) MotorsSpeed.leftAdjustment = left;
     if (right != null) MotorsSpeed.rightAdjustment = right;
+  }
+
+  static Future<bool> saveToSettings() async {
+    try {
+      Settings settings = Settings();
+      await settings
+          .setByKey('leftAdjustment', leftAdjustment)
+          .then((bool result) {
+        print('leftAdjustment saved $leftAdjustment. result $result');
+        return result;
+      });
+      await settings
+          .setByKey('rightAdjustment', rightAdjustment)
+          .then((bool result) {
+        print('rightAdjustment saved $rightAdjustment. result $result');
+        return result;
+      });
+      return true;
+    } catch (err) {
+      return err;
+    }
+  }
+
+  static Future<bool> getFromSettings() async {
+    Settings settings = Settings();
+    leftAdjustment = await settings.getByKey('leftAdjustment') ?? 1;
+    print('leftAdjustment $leftAdjustment');
+
+    rightAdjustment = await settings.getByKey('rightAdjustment') ?? 1;
+    print('rightAdjustment $rightAdjustment');
+
+    return true;
   }
 }

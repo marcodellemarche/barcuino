@@ -1,4 +1,6 @@
+import 'package:barkino/models/motors_speed.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 // import 'package:flutter_xlider/flutter_xlider.dart';
 import '../../packages/flutter_xlider.dart';
 
@@ -14,8 +16,6 @@ class DirectionAdjustment extends StatefulWidget {
 }
 
 class _DirectionAdjustmentState extends State<DirectionAdjustment> {
-  double _value = 100;
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -26,7 +26,7 @@ class _DirectionAdjustmentState extends State<DirectionAdjustment> {
         max: 100,
         axis: Axis.vertical,
         rtl: true,
-        values: [_value],
+        values: [widget.startValue * 100],
         selectByTap: false,
         handlerWidth: 20,
         handlerAnimation: FlutterSliderHandlerAnimation(

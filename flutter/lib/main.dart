@@ -69,6 +69,7 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _isWiFiConnected = false;
   bool _isWiFiConnecting = false;
   String showMessage = '';
+  Future<bool> _dataLoaded;
 
   // set as static objects to avoid re-building on each timer trigger
   final DirectionController joystick = DirectionController(
@@ -291,12 +292,14 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   static void _onDirectionChanged() {
-    webSocket.send('#setMotorsSpeed;${MotorsSpeed.getLeft()};${MotorsSpeed.getRight()};\n');
+    webSocket.send(
+        '#setMotorsSpeed;${MotorsSpeed.getLeft()};${MotorsSpeed.getRight()};\n');
   }
 
   @override
   void initState() {
     super.initState();
+    _dataLoaded = MotorsSpeed.getFromSettings();
     _controller = TextEditingController(text: wsServerAddress);
   }
 
@@ -363,7 +366,17 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ],
             ),
-            _controllerType == 0 ? joystick : pad,
+            FutureBuilder(
+              future: _dataLoaded,
+              builder: (BuildContext futureContext, AsyncSnapshot<bool> snapshot) {
+                if (snapshot.hasData) {
+                  return _controllerType == 0 ? joystick : pad;
+                }
+                else {
+                  return Text('Loading...');
+                }
+              },
+            ),
             RaisedButton(
               child: Text(
                 _controllerType == 1 ? "Show Joystick" : "Show Frecce",

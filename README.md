@@ -40,6 +40,11 @@ Please follow [flutter documentation](https://flutter.dev/docs/get-started/insta
 
 Flutter 
 * https://github.com/artrmz/flutter_control_pad
+* https://github.com/Ali-Azmoud/flutter_xlider
+* https://github.com/fluttercommunity/flutter_launcher_icons
+* https://github.com/dart-lang/web_socket_channel
+* https://github.com/RohitKumarMishra/wifi_configuration
+* https://github.com/flutter/plugins/ (connectivity and shared_preferences)
 
 Arduino
 * https://github.com/LilyGO/ESP32-MINI-32-V1.3

@@ -1,4 +1,3 @@
-import 'package:barkino/models/motors_speed.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 // import 'package:flutter_xlider/flutter_xlider.dart';

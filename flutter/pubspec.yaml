@@ -20,15 +20,21 @@ dependencies:
   flutter:
     sdk: flutter
   gateway: ^0.3.0
-  wifi: ^0.1.5
-  connectivity: ^0.4.8+2
   control_pad: ^1.1.1+1
+  wifi: ^0.1.5
+  wifi_configuration: ^1.2.1
+  connectivity: ^0.4.8+2
   web_socket_channel: ^1.1.0
   rxdart: ^0.23.1
-
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
+  flutter_launcher_icons: ^0.7.5
   cupertino_icons: ^0.1.2
+
+# To check image run on terminal:
+#  flutter pub pub run flutter_launcher_icons:main
+flutter_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/barcuino-logo-round.png"
 
 dev_dependencies:
   flutter_test:

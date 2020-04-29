@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:gateway/gateway.dart';
 import 'package:connectivity/connectivity.dart';
+import 'package:wifi/wifi.dart';
+import 'package:wifi_configuration/wifi_configuration.dart';
+import 'package:connectivity/connectivity.dart';
 
 import './websockets.dart';
 import './utils.dart';
@@ -38,7 +41,7 @@ class _MyHomePageState extends State<MyHomePage> {
   static WebSocketsNotifications webSocket = new WebSocketsNotifications();
   String wsServerAddress = '192.168.4.1';
   int wsServerPort = 81;
-  bool _isSocketConnected = false;
+  static bool _isSocketConnected = false;
   bool _isPasturaEjected = false;
   bool _isLedOn = false;
   bool _isRgbRedOn = true;
@@ -80,7 +83,79 @@ class _MyHomePageState extends State<MyHomePage> {
     controllerType: 1,
   );
 
+  Future<bool> _wifiConnect2() async {
+    bool isConnectedBool = await WifiConfiguration.isConnectedToWifi(ssid);
+    //to get status if device connected to some wifi
+    print('isConnected bool $isConnectedBool');
 
+    _isWiFiConnected = isConnectedBool;
+
+    // String isConnectedString = await WifiConfiguration.connectedToWifi();
+    // //to get current connected wifi name
+    // print('isConnected string $isConnectedString');
+
+    if (!_isWiFiConnected && !_isWiFiConnecting) {
+      _isWiFiConnecting = true;
+      WifiConnectionStatus connectionStatus =
+          await WifiConfiguration.connectToWifi(
+        ssid,
+        password,
+        "com.example.barkino",
+      );
+
+      _isWiFiConnecting = false;
+
+      switch (connectionStatus) {
+        case WifiConnectionStatus.connected:
+          _isWiFiConnected = true;
+          print("connected");
+          break;
+
+        case WifiConnectionStatus.alreadyConnected:
+          _isWiFiConnected = true;
+          print("alreadyConnected");
+          break;
+
+        case WifiConnectionStatus.notConnected:
+          _isWiFiConnected = false;
+          print("notConnected");
+          break;
+
+        case WifiConnectionStatus.platformNotSupported:
+          _isWiFiConnected = false;
+          print("platformNotSupported");
+          break;
+
+        case WifiConnectionStatus.profileAlreadyInstalled:
+          _isWiFiConnected = true;
+          print("profileAlreadyInstalled");
+          break;
+
+        case WifiConnectionStatus.locationNotAllowed:
+          _isWiFiConnected = false;
+          print("locationNotAllowed");
+          break;
+      }
+    }
+
+    if (_isWiFiConnected) {
+      // Now check for mobile network connection
+      ConnectivityResult connectionType =
+          await Connectivity().checkConnectivity();
+
+      if (connectionType == ConnectivityResult.mobile)
+        Utils.asyncAlert(
+          context: context,
+          title: "Network warning",
+          message:
+              "Attenzione, la connessione dati mobile è attiva.\r\nSu alcuni dispositivi può impedire il funzionamento dell'app. Si consiglia di disattivarla.",
+        );
+
+      Future.delayed(Duration(seconds: 1), _startAutoReconnectTimer);
+    }
+
+    return _isWiFiConnected;
+  }
 
   void _wifiConnect() {
     if (!_isWiFiConnecting) {
@@ -98,7 +173,7 @@ class _MyHomePageState extends State<MyHomePage> {
             case WifiState.already:
               print('WiFi state: $state');
               setState(() => _isWiFiConnected = true);
-              // wait 1 second and try to connect
+              // wait 1 second and try to connect socket
               Future.delayed(Duration(seconds: 1), _startAutoReconnectTimer);
               break;
             case WifiState.error:
@@ -185,13 +260,6 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _onMessageReceived(String serverMessage) {
-    //print('Barkino is still alive');
-    // if (_healthCheckTimer != null) _healthCheckTimer.cancel();
-    // _healthCheckTimer = new Timer(Duration(seconds: 5), () {
-    //   print('Barkino is dead. Switching off websocket');
-    //   _socketDisconnect();
-    // });
-
     if (serverMessage.startsWith('#getTemp;')) {
       String value = serverMessage.split(';')[1];
       setState(() => _temperature = double.tryParse(value));
@@ -205,13 +273,30 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _switchOnLed() {
-    setState(() => _isLedOn = true);
     webSocket.send('#led;on;\n');
+    setState(() => _isLedOn = true);
   }
 
   void _switchOffLed() {
-    setState(() => _isLedOn = false);
     webSocket.send('#led;off;\n');
+    setState(() => _isLedOn = false);
+  }
+
+  void _onLedButtonPressed() {
+    if (_isSocketConnected) {
+      if (_isLedOn)
+        _switchOffLed();
+      else
+        _switchOnLed();
+    } else {
+      // alert
+      Utils.asyncAlert(
+        context: context,
+        title: 'Errore',
+        message: 'Socket non connesso!',
+      );
+      print('Socket not connected');
+    }
   }
 
   void _getTemperature({int sensorIndex}) {
@@ -235,15 +320,15 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() => _isPasturaEjected = false);
   }
 
-  void _onSocketConnectionButtonPressed() {
-    if (_isSocketConnected) {
-      _isManuallyDisconnected = true;
-      _socketDisconnect();
-    } else {
-      _isManuallyDisconnected = false;
-      _socketConnect();
-    }
-  }
+  // void _onSocketConnectionButtonPressed() {
+  //   if (_isSocketConnected) {
+  //     _isManuallyDisconnected = true;
+  //     _socketDisconnect();
+  //   } else {
+  //     _isManuallyDisconnected = false;
+  //     _socketConnect();
+  //   }
+  // }
 
   void _ejectPastura() {
     if (_isSocketConnected) {
@@ -292,16 +377,21 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   static void _onDirectionChanged() {
-    webSocket.send('#setMotorsSpeed;${MotorsSpeed.getLeft()};${MotorsSpeed.getRight()};\n');
+    if (_isSocketConnected) {
+      webSocket.send(
+        '#setMotorsSpeed;${MotorsSpeed.getLeft()};${MotorsSpeed.getRight()};\n',
+      );
+    }
   }
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController(text: wsServerAddress);
-    _onWifiChanged = Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
+    _onWifiChanged = Connectivity()
+        .onConnectivityChanged
+        .listen((ConnectivityResult result) {
       // Got a new connectivity status!
-      
     });
   }
 
@@ -333,7 +423,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 style: TextStyle(color: Colors.white, fontSize: 20.0),
               ),
               color: Colors.blue,
-              onPressed: _wifiConnect,
+              onPressed: _wifiConnect2,
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -348,6 +438,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       border: OutlineInputBorder(),
                       labelText: 'Server IP',
                     ),
+                    readOnly: true,
                     onChanged: _handleNewIp,
                   ),
                 ),
@@ -474,7 +565,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 style: TextStyle(color: Colors.white, fontSize: 20.0),
               ),
               color: _isLedOn ? Colors.red : Colors.green,
-              onPressed: _isLedOn ? _switchOffLed : _switchOnLed,
+              onPressed: _onLedButtonPressed,
             ),
             TemperatureSensor(
               value: _temperature,

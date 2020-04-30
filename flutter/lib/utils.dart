@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:wifi_configuration/wifi_configuration.dart';
 
-enum ConfirmAction { CANCEL, ACCEPT }
+enum ConfirmAction { cancel, accept }
 
 class ButtonPressed {
   static const RIGHT = 0;
@@ -40,9 +40,9 @@ class Utils {
         },
       );
 
-// Confirm alert async with title, message and confirm and cancel button.
-// confirmButtonText and cancelButtonText are optional.
-  static Future<ConfirmAction> asyncConfirmEject({
+  // Confirm alert async with title, message and confirm and cancel button.
+  // confirmButtonText and cancelButtonText are optional.
+  static Future<ConfirmAction> asyncConfirmDialog({
     @required BuildContext context,
     @required String title,
     @required String message,
@@ -61,14 +61,14 @@ class Utils {
               child: Text(cancelButtonText),
               color: Colors.red,
               onPressed: () {
-                Navigator.of(context).pop(ConfirmAction.CANCEL);
+                Navigator.of(context).pop(ConfirmAction.cancel);
               },
             ),
             FlatButton(
               child: Text(confirmButtonText),
               color: Colors.green,
               onPressed: () {
-                Navigator.of(context).pop(ConfirmAction.ACCEPT);
+                Navigator.of(context).pop(ConfirmAction.accept);
               },
             ),
           ],
@@ -77,19 +77,22 @@ class Utils {
     );
   }
 
-  static Future<bool> connect(String ssid, String password) async {
-    bool isConnectedBool = await WifiConfiguration.isConnectedToWifi(ssid);
-    //to get status if device connected to some wifi
-    print('isConnected bool $isConnectedBool');
+  static Future<WifiConnectionStatus> connect(String ssid, String password) async {
+    WifiConnectionStatus connectionStatus = WifiConnectionStatus.notConnected;
+    bool isConnectedBool = false;
+
+    try {
+      //to get status if device connected to some wifi
+      isConnectedBool = await WifiConfiguration.isConnectedToWifi(ssid).catchError((err) {
+        print('error checking WiFi connection ${err.toString()}');
+      });
+    } catch (err) {
+      print('error checking WiFi connection ${err.toString()}');
+    }
 
     isWiFiConnected = isConnectedBool;
 
-    // String isConnectedString = await WifiConfiguration.connectedToWifi();
-    // //to get current connected wifi name
-    // print('isConnected string $isConnectedString');
-
     if (!isWiFiConnected && !isWiFiConnecting) {
-      WifiConnectionStatus connectionStatus = WifiConnectionStatus.notConnected;
       isWiFiConnecting = true;
       try {
         connectionStatus = await WifiConfiguration.connectToWifi(
@@ -143,6 +146,6 @@ class Utils {
       }
     }
 
-    return isWiFiConnected;
+    return connectionStatus;
   }
 }

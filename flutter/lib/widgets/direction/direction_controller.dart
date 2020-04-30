@@ -1,5 +1,6 @@
 import 'package:barkino/models/motors_speed.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_xlider/flutter_xlider.dart';
 import 'dart:math';
 
 import './direction_adjustment.dart';

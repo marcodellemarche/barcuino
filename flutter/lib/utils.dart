@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:wifi_configuration/wifi_configuration.dart';
 
 enum ConfirmAction { CANCEL, ACCEPT }
 
@@ -10,8 +11,11 @@ class ButtonPressed {
 }
 
 class Utils {
-// Alert async, with title, message and Ok button.
-// Can be closed by user clicking anywhere
+  static bool isWiFiConnected = false;
+  static bool isWiFiConnecting = false;
+
+  // Alert async, with title, message and Ok button.
+  // Can be closed by user clicking anywhere
   static Future asyncAlert({
     @required BuildContext context,
     @required String title,
@@ -71,5 +75,74 @@ class Utils {
         );
       },
     );
+  }
+
+  static Future<bool> connect(String ssid, String password) async {
+    bool isConnectedBool = await WifiConfiguration.isConnectedToWifi(ssid);
+    //to get status if device connected to some wifi
+    print('isConnected bool $isConnectedBool');
+
+    isWiFiConnected = isConnectedBool;
+
+    // String isConnectedString = await WifiConfiguration.connectedToWifi();
+    // //to get current connected wifi name
+    // print('isConnected string $isConnectedString');
+
+    if (!isWiFiConnected && !isWiFiConnecting) {
+      WifiConnectionStatus connectionStatus = WifiConnectionStatus.notConnected;
+      isWiFiConnecting = true;
+      try {
+        connectionStatus = await WifiConfiguration.connectToWifi(
+          ssid,
+          password,
+          "com.example.barkino",
+        ).catchError((err) {
+          print('error connecting to WiFi ${err.toString()}');
+        });
+      } catch (err) {
+        print('error connecting to WiFi ${err.toString()}');
+      }
+
+      isWiFiConnecting = false;
+
+      switch (connectionStatus) {
+        case WifiConnectionStatus.connected:
+          isWiFiConnected = true;
+          print("connected");
+          break;
+
+        case WifiConnectionStatus.alreadyConnected:
+          isWiFiConnected = true;
+          print("alreadyConnected");
+          break;
+
+        case WifiConnectionStatus.notConnected:
+          isWiFiConnected = false;
+          print("notConnected");
+          break;
+
+        case WifiConnectionStatus.platformNotSupported:
+          isWiFiConnected = false;
+          print("platformNotSupported");
+          break;
+
+        case WifiConnectionStatus.profileAlreadyInstalled:
+          isWiFiConnected = true;
+          print("profileAlreadyInstalled");
+          break;
+
+        case WifiConnectionStatus.locationNotAllowed:
+          isWiFiConnected = false;
+          print("locationNotAllowed");
+          break;
+
+        default:
+          isWiFiConnected = false;
+          print("error! connectionStatus: $connectionStatus");
+          break;
+      }
+    }
+
+    return isWiFiConnected;
   }
 }

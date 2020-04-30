@@ -4,8 +4,6 @@ import 'package:flutter/material.dart';
 // import 'package:flutter_xlider/flutter_xlider.dart';
 import 'package:gateway/gateway.dart';
 import 'package:connectivity/connectivity.dart';
-import 'package:wifi/wifi.dart';
-import 'package:wifi_configuration/wifi_configuration.dart';
 
 import './websockets.dart';
 import './utils.dart';
@@ -68,8 +66,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
   TextEditingController _controller;
   StreamSubscription _onWifiChanged;
-  bool _isWiFiConnected = false;
-  bool _isWiFiConnecting = false;
   String showMessage = '';
   Future<bool> _dataLoaded;
 
@@ -84,62 +80,11 @@ class _MyHomePageState extends State<MyHomePage> {
     controllerType: 1,
   );
 
-  Future<bool> _wifiConnect2() async {
-    bool isConnectedBool = await WifiConfiguration.isConnectedToWifi(ssid);
-    //to get status if device connected to some wifi
-    print('isConnected bool $isConnectedBool');
+  Future<void> _wifiConnect2() async {
 
-    _isWiFiConnected = isConnectedBool;
-
-    // String isConnectedString = await WifiConfiguration.connectedToWifi();
-    // //to get current connected wifi name
-    // print('isConnected string $isConnectedString');
-
-    if (!_isWiFiConnected && !_isWiFiConnecting) {
-      _isWiFiConnecting = true;
-      WifiConnectionStatus connectionStatus =
-          await WifiConfiguration.connectToWifi(
-        ssid,
-        password,
-        "com.example.barkino",
-      );
-
-      _isWiFiConnecting = false;
-
-      switch (connectionStatus) {
-        case WifiConnectionStatus.connected:
-          _isWiFiConnected = true;
-          print("connected");
-          break;
-
-        case WifiConnectionStatus.alreadyConnected:
-          _isWiFiConnected = true;
-          print("alreadyConnected");
-          break;
-
-        case WifiConnectionStatus.notConnected:
-          _isWiFiConnected = false;
-          print("notConnected");
-          break;
-
-        case WifiConnectionStatus.platformNotSupported:
-          _isWiFiConnected = false;
-          print("platformNotSupported");
-          break;
-
-        case WifiConnectionStatus.profileAlreadyInstalled:
-          _isWiFiConnected = true;
-          print("profileAlreadyInstalled");
-          break;
-
-        case WifiConnectionStatus.locationNotAllowed:
-          _isWiFiConnected = false;
-          print("locationNotAllowed");
-          break;
-      }
-    }
-
-    if (_isWiFiConnected) {
+    bool connectionResult = await Utils.connect(ssid, password);
+    
+    if (connectionResult) {
       // Now check for mobile network connection
       ConnectivityResult connectionType =
           await Connectivity().checkConnectivity();
@@ -149,53 +94,52 @@ class _MyHomePageState extends State<MyHomePage> {
           context: context,
           title: "Network warning",
           message:
-              "Attenzione, la connessione dati mobile è attiva.\r\nSu alcuni dispositivi può impedire il funzionamento dell'app. Si consiglia di disattivarla.",
+              "Attenzione, la connessione dati mobile è attiva.\r\nSu alcuni dispositivi può impedire il funzionamento dell'app. \r\n\r\nSi consiglia di disattivarla.",
         );
 
-      Future.delayed(Duration(seconds: 1), _startAutoReconnectTimer);
+      Future.delayed(Duration(seconds: 1), _startAutoReconnectSocket);
     }
 
-    return _isWiFiConnected;
   }
 
-  void _wifiConnect() {
-    if (!_isWiFiConnecting) {
-      _isWiFiConnecting = true;
-      try {
-        Wifi.connection(ssid, password).timeout(
-          Duration(seconds: 5),
-          onTimeout: () {
-            return WifiState.error;
-          },
-        ).then((WifiState state) {
-          _isWiFiConnecting = false;
-          switch (state) {
-            case WifiState.success:
-            case WifiState.already:
-              print('WiFi state: $state');
-              setState(() => _isWiFiConnected = true);
-              // wait 1 second and try to connect socket
-              Future.delayed(Duration(seconds: 1), _startAutoReconnectTimer);
-              break;
-            case WifiState.error:
-              print('Error connection WiFi. State: $state');
-              setState(() => _isWiFiConnected = false);
-              break;
-            default:
-              print('Error connecting');
-              setState(() => _isWiFiConnected = false);
-              break;
-          }
-        }).catchError((error) {
-          print('Error connecting: ${error.toString()}');
-          setState(() => _isWiFiConnected = false);
-        });
-      } catch (err) {
-        setState(() => _isWiFiConnected = false);
-        print('WiFi error ${err.toString()}');
-      }
-    }
-  }
+  // void _wifiConnect() {
+  //   if (!_isWiFiConnecting) {
+  //     _isWiFiConnecting = true;
+  //     try {
+  //       Wifi.connection(ssid, password).timeout(
+  //         Duration(seconds: 5),
+  //         onTimeout: () {
+  //           return WifiState.error;
+  //         },
+  //       ).then((WifiState state) {
+  //         _isWiFiConnecting = false;
+  //         switch (state) {
+  //           case WifiState.success:
+  //           case WifiState.already:
+  //             print('WiFi state: $state');
+  //             setState(() => _isWiFiConnected = true);
+  //             // wait 1 second and try to connect socket
+  //             Future.delayed(Duration(seconds: 1), _startAutoReconnectSocket);
+  //             break;
+  //           case WifiState.error:
+  //             print('Error connection WiFi. State: $state');
+  //             setState(() => _isWiFiConnected = false);
+  //             break;
+  //           default:
+  //             print('Error connecting');
+  //             setState(() => _isWiFiConnected = false);
+  //             break;
+  //         }
+  //       }).catchError((error) {
+  //         print('Error connecting: ${error.toString()}');
+  //         setState(() => _isWiFiConnected = false);
+  //       });
+  //     } catch (err) {
+  //       setState(() => _isWiFiConnected = false);
+  //       print('WiFi error ${err.toString()}');
+  //     }
+  //   }
+  // }
 
   void _getGw() {
     Gateway.info
@@ -219,7 +163,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (!_isSocketConnected) {
       //webSocket.addListener(_onMessageReceived);
       setState(() => _isSocketConnected = true);
-      _stopAutoReconnectTimer();
+      _stopAutoReconnectSocket();
       if (_statusTimer != null) _statusTimer.cancel();
 
       _statusTimer = new Timer.periodic(Duration(seconds: 1), (timer) {
@@ -236,7 +180,7 @@ class _MyHomePageState extends State<MyHomePage> {
       setState(() => _isSocketConnected = false);
       _socketDisconnect();
       if (!_isManuallyDisconnected && _autoReconnectSocket) {
-        _startAutoReconnectTimer();
+        _startAutoReconnectSocket();
       }
     }
   }
@@ -248,7 +192,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (_statusTimer != null) _statusTimer.cancel();
   }
 
-  void _startAutoReconnectTimer() {
+  void _startAutoReconnectSocket() {
     if (_autoReconnectTimer == null || !_autoReconnectTimer.isActive) {
       _autoReconnectTimer = new Timer.periodic(Duration(seconds: 1), (_) {
         _socketConnect();
@@ -256,7 +200,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void _stopAutoReconnectTimer() {
+  void _stopAutoReconnectSocket() {
     if (_autoReconnectTimer != null) _autoReconnectTimer.cancel();
   }
 
@@ -421,7 +365,7 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             RaisedButton(
               child: Text(
-                !_isWiFiConnected ? "Connect WiFi" : "Re-connect WiFi",
+                !Utils.isWiFiConnected ? "Connect WiFi" : "Re-connect WiFi",
                 style: TextStyle(color: Colors.white, fontSize: 20.0),
               ),
               color: Colors.blue,

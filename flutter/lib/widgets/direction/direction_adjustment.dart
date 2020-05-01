@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-// import 'package:flutter_xlider/flutter_xlider.dart';
-import '../../packages/flutter_xlider.dart';
+import 'package:flutter_xlider/flutter_xlider.dart';
+//import '../../packages/flutter_xlider.dart';
 
 class DirectionAdjustment extends StatefulWidget {
   final Function onAdjustmentDone;
+  final FlutterSliderTooltipDirection toolTipDirection;
   final double startValue;
   final double height;
 
-  DirectionAdjustment({this.startValue, this.onAdjustmentDone, this.height});
+  DirectionAdjustment({this.startValue, this.onAdjustmentDone, this.height, this.toolTipDirection});
 
   @override
   _DirectionAdjustmentState createState() => _DirectionAdjustmentState();
@@ -19,6 +20,7 @@ class _DirectionAdjustmentState extends State<DirectionAdjustment> {
   Widget build(BuildContext context) {
     return Container(
       height: widget.height,
+      alignment: AlignmentDirectional.center,
       child: FlutterSlider(
         rangeSlider: false,
         min: 0,
@@ -26,46 +28,62 @@ class _DirectionAdjustmentState extends State<DirectionAdjustment> {
         axis: Axis.vertical,
         rtl: true,
         values: [widget.startValue * 100],
-        selectByTap: false,
         handlerWidth: 20,
-        handlerAnimation: FlutterSliderHandlerAnimation(
-          scale: 1,
-        ),
         tooltip: FlutterSliderTooltip(
-          disableToolTipAnimation: true,
-          boxStyle: FlutterSliderTooltipBox(
-            decoration: BoxDecoration(
-              color: Theme.of(context).accentColor,
-              borderRadius: BorderRadius.circular(15),
-            ),
-          ),
-          textStyle: TextStyle(
-            color: Colors.white,
-          ),
-          format: (String val) {
-            double valueNormalized = num.parse(val);
-            return valueNormalized.toStringAsFixed(0);
+          direction: widget.toolTipDirection,
+          disableAnimation: true,
+          custom: (value) {
+            return FractionallySizedBox(
+              alignment: AlignmentDirectional.center,
+              widthFactor: 1.5,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).accentColor,
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    '${value.toStringAsFixed(0)} %',
+                    style: TextStyle(
+                      color: Colors.white,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            );
           },
-          rightSuffix: Text(
-            ' %',
-            style: TextStyle(
-              color: Colors.white,
-            ),
-          ),
+          // boxStyle: FlutterSliderTooltipBox(
+          //   decoration: BoxDecoration(
+          //     color: Theme.of(context).accentColor,
+          //     borderRadius: BorderRadius.circular(15),
+          //   ),
+          // ),
+          // textStyle: TextStyle(
+          //   color: Colors.white,
+          // ),
+          // format: (String val) {
+          //   double valueNormalized = num.parse(val);
+          //   return valueNormalized.toStringAsFixed(0);
+          // },
+          // rightSuffix: Text(
+          //   ' %',
+          //   style: TextStyle(
+          //     color: Colors.white,
+          //   ),
+          // ),
         ),
         trackBar: FlutterSliderTrackBar(
           inactiveTrackBarHeight: 2,
           activeTrackBarHeight: 2,
         ),
         handler: FlutterSliderHandler(
+          disabled: true,
           child: Container(),
           decoration: BoxDecoration(
               color: Theme.of(context).accentColor, shape: BoxShape.circle),
         ),
-        // onDragStarted: (_, __, ___) {
-        //   // TODO add haptic feedback
-        //   Feedback.forTap(context);
-        // },
         onDragCompleted: (handlerIndex, newValue, _) {
           double valueNormalized =
               num.parse((newValue / 100).toStringAsFixed(2));

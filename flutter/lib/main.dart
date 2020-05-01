@@ -68,8 +68,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
   TextEditingController _controller;
   StreamSubscription _onWifiChanged;
-  bool _isWiFiConnected = false;
-  bool _isWiFiConnecting = false;
   String showMessage = '';
   Future<bool> _dataLoaded;
 
@@ -84,83 +82,56 @@ class _MyHomePageState extends State<MyHomePage> {
     controllerType: 1,
   );
 
-  Future<bool> _wifiConnect2() async {
-    bool isConnectedBool = await WifiConfiguration.isConnectedToWifi(ssid);
-    //to get status if device connected to some wifi
-    print('isConnected bool $isConnectedBool');
+  Future<void> _wifiConnect2() async {
+    WifiConnectionStatus connectionResult = await Utils.connect(ssid, password);
 
-    _isWiFiConnected = isConnectedBool;
+    if (Utils.isWiFiConnected || connectionResult == WifiConnectionStatus.connected) {
+      setState(() {});
 
-    // String isConnectedString = await WifiConfiguration.connectedToWifi();
-    // //to get current connected wifi name
-    // print('isConnected string $isConnectedString');
-
-    if (!_isWiFiConnected && !_isWiFiConnecting) {
-      _isWiFiConnecting = true;
-      WifiConnectionStatus connectionStatus =
-          await WifiConfiguration.connectToWifi(
-        ssid,
-        password,
-        "com.example.barkino",
-      );
-
-      _isWiFiConnecting = false;
-
-      switch (connectionStatus) {
-        case WifiConnectionStatus.connected:
-          _isWiFiConnected = true;
-          print("connected");
-          break;
-
-        case WifiConnectionStatus.alreadyConnected:
-          _isWiFiConnected = true;
-          print("alreadyConnected");
-          break;
-
-        case WifiConnectionStatus.notConnected:
-          _isWiFiConnected = false;
-          print("notConnected");
-          break;
-
-        case WifiConnectionStatus.platformNotSupported:
-          _isWiFiConnected = false;
-          print("platformNotSupported");
-          break;
-
-        case WifiConnectionStatus.profileAlreadyInstalled:
-          _isWiFiConnected = true;
-          print("profileAlreadyInstalled");
-          break;
-
-        case WifiConnectionStatus.locationNotAllowed:
-          _isWiFiConnected = false;
-          print("locationNotAllowed");
-          break;
-      }
-    }
-
-    if (_isWiFiConnected) {
       // Now check for mobile network connection
       ConnectivityResult connectionType =
           await Connectivity().checkConnectivity();
 
-      if (connectionType == ConnectivityResult.mobile)
-        Utils.asyncAlert(
+      if (connectionType == ConnectivityResult.mobile) {
+        String title = "Network warning";
+        String message =
+            "Attenzione, la connessione dati mobile è attiva.\r\nSu alcuni dispositivi può impedire il funzionamento dell'app. \r\n\r\nSi consiglia di disattivarla.";
+
+        ConfirmAction response = await Utils.asyncConfirmDialog(
           context: context,
-          title: "Network warning",
-          message:
-              "Attenzione, la connessione dati mobile è attiva.\r\nSu alcuni dispositivi può impedire il funzionamento dell'app. Si consiglia di disattivarla.",
+          title: title,
+          message: message,
+          cancelButtonText: 'Fo come cazzo me pare',
+          confirmButtonText: 'Disattiva',
         );
 
-      Future.delayed(Duration(seconds: 1), _startAutoReconnectTimer);
-    }
+        switch (response) {
+          case ConfirmAction.accept:
+            await Utils.asyncAlert(
+              context: context,
+              title: 'Waiting...',
+              message: 'Ok, aspetto qua.\r\nDisattiva la connessione dati mobile e premi ok.',
+            );
 
-    return _isWiFiConnected;
+            break;
+          case ConfirmAction.cancel:
+            Utils.asyncAlert(
+              context: context,
+              title: 'Fanculo!',
+              message: 'Fa n\'po\' come cazzo te pare...' ,
+            );
+            break;
+          default:
+        }
+      }
+      
+      Future.delayed(Duration(seconds: 1), _startAutoReconnectSocket);
+    }
   }
 
   void _wifiConnect() {
-    if (!_isWiFiConnecting) {
-      _isWiFiConnecting = true;
+    if (!Utils.isWiFiConnecting) {
+      Utils.isWiFiConnecting = true;
       try {
         Wifi.connection(ssid, password).timeout(
           Duration(seconds: 5),
@@ -168,30 +139,30 @@ class _MyHomePageState extends State<MyHomePage> {
             return WifiState.error;
           },
         ).then((WifiState state) {
-          _isWiFiConnecting = false;
+          Utils.isWiFiConnecting = false;
           switch (state) {
             case WifiState.success:
             case WifiState.already:
               print('WiFi state: $state');
-              setState(() => _isWiFiConnected = true);
+              setState(() => Utils.isWiFiConnected = true);
               // wait 1 second and try to connect socket
-              Future.delayed(Duration(seconds: 1), _startAutoReconnectTimer);
+              Future.delayed(Duration(seconds: 1), _startAutoReconnectSocket);
               break;
             case WifiState.error:
               print('Error connection WiFi. State: $state');
-              setState(() => _isWiFiConnected = false);
+              setState(() => Utils.isWiFiConnected = false);
               break;
             default:
               print('Error connecting');
-              setState(() => _isWiFiConnected = false);
+              setState(() => Utils.isWiFiConnected = false);
               break;
           }
         }).catchError((error) {
           print('Error connecting: ${error.toString()}');
-          setState(() => _isWiFiConnected = false);
+          setState(() => Utils.isWiFiConnected = false);
         });
       } catch (err) {
-        setState(() => _isWiFiConnected = false);
+        setState(() => Utils.isWiFiConnected = false);
         print('WiFi error ${err.toString()}');
       }
     }
@@ -207,7 +178,7 @@ class _MyHomePageState extends State<MyHomePage> {
     webSocket.initCommunication(
         serverAddress: wsServerAddress,
         serverPort: wsServerPort,
-        timeout: Duration(seconds: 3),
+        timeout: Duration(seconds: 5),
         pingInterval: Duration(milliseconds: 500),
         listener: _onMessageReceived);
     webSocket.isOn.stream.listen((isConnected) {
@@ -219,7 +190,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (!_isSocketConnected) {
       //webSocket.addListener(_onMessageReceived);
       setState(() => _isSocketConnected = true);
-      _stopAutoReconnectTimer();
+      _stopAutoReconnectSocket();
       if (_statusTimer != null) _statusTimer.cancel();
 
       _statusTimer = new Timer.periodic(Duration(seconds: 1), (timer) {
@@ -236,7 +207,7 @@ class _MyHomePageState extends State<MyHomePage> {
       setState(() => _isSocketConnected = false);
       _socketDisconnect();
       if (!_isManuallyDisconnected && _autoReconnectSocket) {
-        _startAutoReconnectTimer();
+        _startAutoReconnectSocket();
       }
     }
   }
@@ -248,7 +219,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (_statusTimer != null) _statusTimer.cancel();
   }
 
-  void _startAutoReconnectTimer() {
+  void _startAutoReconnectSocket() {
     if (_autoReconnectTimer == null || !_autoReconnectTimer.isActive) {
       _autoReconnectTimer = new Timer.periodic(Duration(seconds: 1), (_) {
         _socketConnect();
@@ -256,7 +227,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void _stopAutoReconnectTimer() {
+  void _stopAutoReconnectSocket() {
     if (_autoReconnectTimer != null) _autoReconnectTimer.cancel();
   }
 
@@ -334,7 +305,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void _ejectPastura() {
     if (_isSocketConnected) {
       if (!_isPasturaEjected) {
-        Utils.asyncConfirmEject(
+        Utils.asyncConfirmDialog(
           context: context,
           title: 'Lanciamo?',
           message:
@@ -343,7 +314,7 @@ class _MyHomePageState extends State<MyHomePage> {
           confirmButtonText: 'LANCIA ZIO!',
         ).then((ConfirmAction response) {
           switch (response) {
-            case ConfirmAction.ACCEPT:
+            case ConfirmAction.accept:
               webSocket.send('#ejectPastura;\n');
               Utils.asyncAlert(
                 context: context,
@@ -352,7 +323,7 @@ class _MyHomePageState extends State<MyHomePage> {
               );
               setState(() => _isPasturaEjected = true);
               break;
-            case ConfirmAction.CANCEL:
+            case ConfirmAction.cancel:
               print('User aborted');
               break;
             default:
@@ -421,7 +392,7 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             RaisedButton(
               child: Text(
-                !_isWiFiConnected ? "Connect WiFi" : "Re-connect WiFi",
+                !Utils.isWiFiConnected ? "Connect WiFi" : "Re-connect WiFi",
                 style: TextStyle(color: Colors.white, fontSize: 20.0),
               ),
               color: Colors.blue,
@@ -464,11 +435,11 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             FutureBuilder(
               future: _dataLoaded,
-              builder: (BuildContext futureContext, AsyncSnapshot<bool> snapshot) {
+              builder:
+                  (BuildContext futureContext, AsyncSnapshot<bool> snapshot) {
                 if (snapshot.hasData) {
                   return _controllerType == 0 ? joystick : pad;
-                }
-                else {
+                } else {
                   return Text('Loading...');
                 }
               },

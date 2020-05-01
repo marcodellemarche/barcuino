@@ -70,30 +70,34 @@ class WebSocketsNotifications {
     ///
 
     WebSocket.connect('ws://$serverAddress:$serverPort')
-        .timeout(timeout)
+        .timeout(timeout, onTimeout: () => null)
         .then((webSocket) {
       try {
-        webSocket.pingInterval = pingInterval;
-        _channel = new IOWebSocketChannel(webSocket);
+        if (webSocket != null) {
+          webSocket.pingInterval = pingInterval;
+          _channel = new IOWebSocketChannel(webSocket);
 
-        addListener(listener);
+          addListener(listener);
 
-        _isOn = true;
-        isOn.add(_isOn);
+          _isOn = true;
+          isOn.add(_isOn);
 
-        _channel.stream.listen(
-          (message) => _onReceptionOfMessageFromServer(message),
-          onError: (error) {
-            print('onError');
-            _isOn = false;
-            isOn.add(_isOn);
-          },
-          onDone: () {
-            print('onDone');
-            _isOn = false;
-            isOn.add(_isOn);
-          },
-        );
+          _channel.stream.listen(
+            (message) => _onReceptionOfMessageFromServer(message),
+            onError: (error) {
+              print('onError');
+              _isOn = false;
+              isOn.add(_isOn);
+            },
+            onDone: () {
+              print('onDone');
+              _isOn = false;
+              isOn.add(_isOn);
+            },
+          );
+        } else {
+          print('timpeout on WebSocket.connect');
+        }
       } catch (e) {
         print(
             'Error happened when opening a new websocket connection. ${e.toString()}');

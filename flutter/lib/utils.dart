@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:wifi_configuration/wifi_configuration.dart';
 
-enum ConfirmAction { CANCEL, ACCEPT }
+enum ConfirmAction { cancel, accept }
 
 class ButtonPressed {
   static const RIGHT = 0;
@@ -10,8 +11,11 @@ class ButtonPressed {
 }
 
 class Utils {
-// Alert async, with title, message and Ok button.
-// Can be closed by user clicking anywhere
+  static bool isWiFiConnected = false;
+  static bool isWiFiConnecting = false;
+
+  // Alert async, with title, message and Ok button.
+  // Can be closed by user clicking anywhere
   static Future asyncAlert({
     @required BuildContext context,
     @required String title,
@@ -36,9 +40,9 @@ class Utils {
         },
       );
 
-// Confirm alert async with title, message and confirm and cancel button.
-// confirmButtonText and cancelButtonText are optional.
-  static Future<ConfirmAction> asyncConfirmEject({
+  // Confirm alert async with title, message and confirm and cancel button.
+  // confirmButtonText and cancelButtonText are optional.
+  static Future<ConfirmAction> asyncConfirmDialog({
     @required BuildContext context,
     @required String title,
     @required String message,
@@ -57,19 +61,91 @@ class Utils {
               child: Text(cancelButtonText),
               color: Colors.red,
               onPressed: () {
-                Navigator.of(context).pop(ConfirmAction.CANCEL);
+                Navigator.of(context).pop(ConfirmAction.cancel);
               },
             ),
             FlatButton(
               child: Text(confirmButtonText),
               color: Colors.green,
               onPressed: () {
-                Navigator.of(context).pop(ConfirmAction.ACCEPT);
+                Navigator.of(context).pop(ConfirmAction.accept);
               },
             ),
           ],
         );
       },
     );
+  }
+
+  static Future<WifiConnectionStatus> connect(String ssid, String password) async {
+    WifiConnectionStatus connectionStatus = WifiConnectionStatus.notConnected;
+    bool isConnectedBool = false;
+
+    try {
+      //to get status if device connected to some wifi
+      isConnectedBool = await WifiConfiguration.isConnectedToWifi(ssid).catchError((err) {
+        print('error checking WiFi connection ${err.toString()}');
+      });
+    } catch (err) {
+      print('error checking WiFi connection ${err.toString()}');
+    }
+
+    isWiFiConnected = isConnectedBool;
+
+    if (!isWiFiConnected && !isWiFiConnecting) {
+      isWiFiConnecting = true;
+      try {
+        connectionStatus = await WifiConfiguration.connectToWifi(
+          ssid,
+          password,
+          "com.example.barkino",
+        ).catchError((err) {
+          print('error connecting to WiFi ${err.toString()}');
+        });
+      } catch (err) {
+        print('error connecting to WiFi ${err.toString()}');
+      }
+
+      isWiFiConnecting = false;
+
+      switch (connectionStatus) {
+        case WifiConnectionStatus.connected:
+          isWiFiConnected = true;
+          print("connected");
+          break;
+
+        case WifiConnectionStatus.alreadyConnected:
+          isWiFiConnected = true;
+          print("alreadyConnected");
+          break;
+
+        case WifiConnectionStatus.notConnected:
+          isWiFiConnected = false;
+          print("notConnected");
+          break;
+
+        case WifiConnectionStatus.platformNotSupported:
+          isWiFiConnected = false;
+          print("platformNotSupported");
+          break;
+
+        case WifiConnectionStatus.profileAlreadyInstalled:
+          isWiFiConnected = true;
+          print("profileAlreadyInstalled");
+          break;
+
+        case WifiConnectionStatus.locationNotAllowed:
+          isWiFiConnected = false;
+          print("locationNotAllowed");
+          break;
+
+        default:
+          isWiFiConnected = false;
+          print("error! connectionStatus: $connectionStatus");
+          break;
+      }
+    }
+
+    return connectionStatus;
   }
 }

@@ -83,8 +83,8 @@ class Utils {
     bool isConnectedBool = false;
     print('Utils: connect method called.');
       
-    // //to get status if device connected to some wifi
-    // isConnectedBool = await WifiConfiguration.isConnectedToWifi(ssid);
+    //to get status if device connected to some wifi
+    isConnectedBool = await WifiConfiguration.isConnectedToWifi(ssid);
 
     print('Utils: isWiFiConnected = $isWiFiConnected');
     isWiFiConnected = isConnectedBool;

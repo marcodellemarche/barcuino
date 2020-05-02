@@ -87,90 +87,95 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> _wifiConnect2() async {
     WifiConnectionStatus connectionResult = await Utils.connect(ssid, password);
 
-    if (Utils.isWiFiConnected || connectionResult == WifiConnectionStatus.connected) 
-    {
-      print('isWiFiConnected: ${Utils.isWiFiConnected}. connectionResult: ${connectionResult.toString()} ');
+    if (Utils.isWiFiConnected ||
+        connectionResult == WifiConnectionStatus.connected) {
+      print(
+          'isWiFiConnected: ${Utils.isWiFiConnected}. connectionResult: ${connectionResult.toString()} ');
 
       setState(() {});
 
       // Now check for mobile network connection
-      ConnectivityResult connectionType =
-          await Connectivity().checkConnectivity();
-
-      if (connectionType == ConnectivityResult.mobile) {
-        String title = "Network warning";
-        String message =
-            "Attenzione, la connessione dati mobile è attiva.\r\nSu alcuni dispositivi può impedire il funzionamento dell'app. \r\n\r\nSi consiglia di disattivarla.";
-
-        ConfirmAction response = await Utils.asyncConfirmDialog(
-          context: context,
-          title: title,
-          message: message,
-          cancelButtonText: 'Fo come cazzo me pare',
-          confirmButtonText: 'Disattiva',
-        );
-
-        switch (response) {
-          case ConfirmAction.accept:
-            await Utils.asyncAlert(
-              context: context,
-              title: 'Waiting...',
-              message:
-                  'Ok, aspetto qua.\r\nDisattiva la connessione dati mobile e premi ok.',
-            );
-
-            break;
-          case ConfirmAction.cancel:
-            Utils.asyncAlert(
-              context: context,
-              title: 'Fanculo!',
-              message: 'Fa n\'po\' come cazzo te pare...',
-            );
-            break;
-          default:
-        }
-      }
+      await _checkConnectivity();
 
       Future.delayed(Duration(seconds: 1), _startAutoReconnectSocket);
     }
   }
 
-  void _wifiConnect() {
+  Future<void> _checkConnectivity() async {
+    ConnectivityResult connectionType =
+        await Connectivity().checkConnectivity();
+
+    if (connectionType == ConnectivityResult.mobile) {
+      String title = "Network warning";
+      String message =
+          "Attenzione, la connessione dati mobile è attiva.\r\nSu alcuni dispositivi può impedire il funzionamento dell'app. \r\n\r\nSi consiglia di disattivarla.";
+
+      ConfirmAction response = await Utils.asyncConfirmDialog(
+        context: context,
+        title: title,
+        message: message,
+        cancelButtonText: 'Fo come cazzo me pare',
+        confirmButtonText: 'Disattiva',
+      );
+
+      switch (response) {
+        case ConfirmAction.accept:
+          await Utils.asyncAlert(
+            context: context,
+            title: 'Waiting...',
+            message:
+                'Ok, aspetto qua.\r\nDisattiva la connessione dati mobile e premi ok.',
+          );
+
+          break;
+        case ConfirmAction.cancel:
+          Utils.asyncAlert(
+            context: context,
+            title: 'Fanculo!',
+            message: 'Fa n\'po\' come cazzo te pare...',
+          );
+          break;
+        default:
+      }
+    }
+  }
+
+  Future<void> _wifiConnect() async {
     if (!Utils.isWiFiConnecting) {
       Utils.isWiFiConnecting = true;
+
       try {
-        Wifi.connection(ssid, password).timeout(
-          Duration(seconds: 5),
-          onTimeout: () {
-            return WifiState.error;
-          },
-        ).then((WifiState state) {
-          Utils.isWiFiConnecting = false;
-          switch (state) {
-            case WifiState.success:
-            case WifiState.already:
-              print('WiFi state: $state');
-              setState(() => Utils.isWiFiConnected = true);
-              // wait 1 second and try to connect socket
-              Future.delayed(Duration(seconds: 1), _startAutoReconnectSocket);
-              break;
-            case WifiState.error:
-              print('Error connection WiFi. State: $state');
-              setState(() => Utils.isWiFiConnected = false);
-              break;
-            default:
-              print('Error connecting');
-              setState(() => Utils.isWiFiConnected = false);
-              break;
-          }
-        }).catchError((error) {
-          print('Error connecting: ${error.toString()}');
-          setState(() => Utils.isWiFiConnected = false);
-        });
+        WifiState wifiState = await Wifi.connection(ssid, password);
+
+        Utils.isWiFiConnecting = false;
+        switch (wifiState) {
+          case WifiState.success:
+          case WifiState.already:
+            print('WiFi state: $wifiState');
+
+            // Now check for mobile network connection
+            await _checkConnectivity();
+
+            setState(() => Utils.isWiFiConnected = true);
+
+            // wait 1 second and try to connect socket
+            Future.delayed(Duration(seconds: 1), _startAutoReconnectSocket);
+            break;
+          case WifiState.error:
+            setState(() => Utils.isWiFiConnected = false);
+            print('Error connection WiFi. State: $wifiState');
+            break;
+          default:
+            setState(() => Utils.isWiFiConnected = false);
+            print('Error connecting');
+            break;
+        }
       } catch (err) {
         setState(() => Utils.isWiFiConnected = false);
         print('WiFi error ${err.toString()}');
       }
+    } else {
+      setState(() => Utils.isWiFiConnected = true);
     }
   }
 

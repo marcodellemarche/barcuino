@@ -1,6 +1,5 @@
 import 'package:barkino/models/motors_speed.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_xlider/flutter_xlider.dart';
 import 'dart:math';
 
 import './direction_adjustment.dart';
@@ -10,17 +9,27 @@ class DirectionController extends StatelessWidget {
   final Function onDirectionChanged;
   // type 0 = Joystick, type 1 = arrows
   final int controllerType;
+  final bool adjustmentsDisabled;
 
   const DirectionController({
     @required this.onDirectionChanged,
     this.controllerType,
+    this.adjustmentsDisabled = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final double _size = min(MediaQuery.of(context).size.width,
-            MediaQuery.of(context).size.height) *
+    final double _size = min(
+          MediaQuery.of(context).size.width,
+          MediaQuery.of(context).size.height,
+        ) *
         0.5;
+
+    final DirectionInput directionInput = DirectionInput(
+      size: _size,
+      onDirectionChanged: onDirectionChanged,
+      controllerType: controllerType,
+    );
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -30,9 +39,12 @@ class DirectionController extends StatelessWidget {
             DirectionAdjustment(
               height: _size,
               startValue: MotorsSpeed.leftAdjustment.toDouble(),
+              disabled: adjustmentsDisabled,
               onAdjustmentDone: (double newValue) {
                 MotorsSpeed.setAdjstment(left: newValue);
-                MotorsSpeed.saveToSettings().then((_) {MotorsSpeed.getFromSettings();});
+                MotorsSpeed.saveToSettings().then((_) {
+                  MotorsSpeed.getFromSettings();
+                });
                 onDirectionChanged();
               },
             ),
@@ -42,19 +54,18 @@ class DirectionController extends StatelessWidget {
             ),
           ],
         ),
-        DirectionInput(
-          size: _size,
-          onDirectionChanged: onDirectionChanged,
-          controllerType: controllerType,
-        ),
+        directionInput,
         Column(
           children: <Widget>[
             DirectionAdjustment(
               height: _size,
               startValue: MotorsSpeed.rightAdjustment.toDouble(),
+              disabled: adjustmentsDisabled,
               onAdjustmentDone: (double newValue) {
                 MotorsSpeed.setAdjstment(right: newValue);
-                MotorsSpeed.saveToSettings().then((_) {MotorsSpeed.getFromSettings();});
+                MotorsSpeed.saveToSettings().then((_) {
+                  MotorsSpeed.getFromSettings();
+                });
                 onDirectionChanged();
               },
             ),

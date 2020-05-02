@@ -21,6 +21,7 @@ class DirectionInput extends StatelessWidget {
   void _onPadButtonPressed(int buttonPressed, var gesture) {
     int left;
     int right;
+    bool includeAdjstments = false;
 
     switch (buttonPressed) {
       case ButtonPressed.LEFT:
@@ -30,6 +31,7 @@ class DirectionInput extends StatelessWidget {
       case ButtonPressed.UPWARD:
         left = MotorsSpeed.maxSpeed;
         right = MotorsSpeed.maxSpeed;
+        includeAdjstments = true;
         break;
       case ButtonPressed.RIGHT:
         left = 0;
@@ -42,7 +44,7 @@ class DirectionInput extends StatelessWidget {
       default:
     }
 
-    MotorsSpeed.setMotorsSpeed(left: left, right: right);
+    MotorsSpeed.setMotorsSpeed(left: left, right: right, includeAdjustments: includeAdjstments);
 
     this.onDirectionChanged();
   }

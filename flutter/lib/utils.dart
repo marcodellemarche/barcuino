@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:wifi_configuration/wifi_configuration.dart';
 
+
 enum ConfirmAction { cancel, accept }
 
 class ButtonPressed {
@@ -80,31 +81,24 @@ class Utils {
   static Future<WifiConnectionStatus> connect(String ssid, String password) async {
     WifiConnectionStatus connectionStatus = WifiConnectionStatus.notConnected;
     bool isConnectedBool = false;
+    print('Utils: connect method called.');
+      
+    // //to get status if device connected to some wifi
+    // isConnectedBool = await WifiConfiguration.isConnectedToWifi(ssid);
 
-    try {
-      //to get status if device connected to some wifi
-      isConnectedBool = await WifiConfiguration.isConnectedToWifi(ssid).catchError((err) {
-        print('error checking WiFi connection ${err.toString()}');
-      });
-    } catch (err) {
-      print('error checking WiFi connection ${err.toString()}');
-    }
-
+    print('Utils: isWiFiConnected = $isWiFiConnected');
     isWiFiConnected = isConnectedBool;
 
     if (!isWiFiConnected && !isWiFiConnecting) {
       isWiFiConnecting = true;
-      try {
-        connectionStatus = await WifiConfiguration.connectToWifi(
-          ssid,
-          password,
-          "com.example.barkino",
-        ).catchError((err) {
-          print('error connecting to WiFi ${err.toString()}');
-        });
-      } catch (err) {
-        print('error connecting to WiFi ${err.toString()}');
-      }
+
+      print('Utils: WifiConfiguration.connectToWifi = $isWiFiConnected');
+
+      connectionStatus = await WifiConfiguration.connectToWifi(
+        ssid,
+        password,
+        "com.example.barkino",
+      );
 
       isWiFiConnecting = false;
 

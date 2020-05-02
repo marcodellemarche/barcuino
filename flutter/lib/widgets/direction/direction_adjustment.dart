@@ -8,8 +8,9 @@ class DirectionAdjustment extends StatefulWidget {
   final FlutterSliderTooltipDirection toolTipDirection;
   final double startValue;
   final double height;
+  final bool disabled;
 
-  DirectionAdjustment({this.startValue, this.onAdjustmentDone, this.height, this.toolTipDirection});
+  DirectionAdjustment({this.startValue, this.onAdjustmentDone, this.height, this.toolTipDirection, this.disabled});
 
   @override
   _DirectionAdjustmentState createState() => _DirectionAdjustmentState();
@@ -22,6 +23,7 @@ class _DirectionAdjustmentState extends State<DirectionAdjustment> {
       height: widget.height,
       alignment: AlignmentDirectional.center,
       child: FlutterSlider(
+        disabled: widget.disabled,
         rangeSlider: false,
         min: 0,
         max: 100,

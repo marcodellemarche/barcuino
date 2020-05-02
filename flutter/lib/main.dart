@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-// import 'package:flutter_xlider/flutter_xlider.dart';
 import 'package:gateway/gateway.dart';
 import 'package:connectivity/connectivity.dart';
 import 'package:wifi/wifi.dart';
@@ -44,10 +43,11 @@ class _MyHomePageState extends State<MyHomePage> {
   static bool _isSocketConnected = false;
   bool _isPasturaEjected = false;
   bool _isLedOn = false;
-  bool _isRgbRedOn = true;
-  bool _isRgbBlueOn = false;
-  bool _isRgbGreenOn = false;
-  bool _isBackLedOn = false;
+  bool _isAdjstmentDisabled = true;
+  // bool _isRgbRedOn = true;
+  // bool _isRgbBlueOn = false;
+  // bool _isRgbGreenOn = false;
+  // bool _isBackLedOn = false;
 
   List<String> logMessages = new List<String>();
   var logMessageTextController = TextEditingController();
@@ -71,21 +71,26 @@ class _MyHomePageState extends State<MyHomePage> {
   String showMessage = '';
   Future<bool> _dataLoaded;
 
-  // set as static objects to avoid re-building on each timer trigger
-  final DirectionController joystick = DirectionController(
-    onDirectionChanged: _onDirectionChanged,
-    controllerType: 0,
-  );
+  // // set as static objects to avoid re-building on each timer trigger
+  // DirectionController joystick = DirectionController(
+  //   onDirectionChanged: _onDirectionChanged,
+  //   controllerType: 0,
+  //   adjustmentsDisabled: _isAdjstmentDisabled,
+  // );
 
-  final DirectionController pad = DirectionController(
-    onDirectionChanged: _onDirectionChanged,
-    controllerType: 1,
-  );
+  // DirectionController pad = DirectionController(
+  //   onDirectionChanged: _onDirectionChanged,
+  //   controllerType: 1,
+  //   adjustmentsDisabled: _isAdjstmentDisabled,
+  // );
 
   Future<void> _wifiConnect2() async {
     WifiConnectionStatus connectionResult = await Utils.connect(ssid, password);
 
-    if (Utils.isWiFiConnected || connectionResult == WifiConnectionStatus.connected) {
+    if (Utils.isWiFiConnected || connectionResult == WifiConnectionStatus.connected) 
+    {
+      print('isWiFiConnected: ${Utils.isWiFiConnected}. connectionResult: ${connectionResult.toString()} ');
+
       setState(() {});
 
       // Now check for mobile network connection
@@ -110,7 +115,8 @@ class _MyHomePageState extends State<MyHomePage> {
             await Utils.asyncAlert(
               context: context,
               title: 'Waiting...',
-              message: 'Ok, aspetto qua.\r\nDisattiva la connessione dati mobile e premi ok.',
+              message:
+                  'Ok, aspetto qua.\r\nDisattiva la connessione dati mobile e premi ok.',
             );
 
             break;
@@ -118,13 +124,13 @@ class _MyHomePageState extends State<MyHomePage> {
             Utils.asyncAlert(
               context: context,
               title: 'Fanculo!',
-              message: 'Fa n\'po\' come cazzo te pare...' ,
+              message: 'Fa n\'po\' come cazzo te pare...',
             );
             break;
           default:
         }
       }
-      
+
       Future.delayed(Duration(seconds: 1), _startAutoReconnectSocket);
     }
   }
@@ -271,6 +277,17 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  void _onAdjstmentButtonPressed() {
+    if (_isAdjstmentDisabled)
+      setState(() {
+        _isAdjstmentDisabled = false;
+      });
+    else
+      setState(() {
+        _isAdjstmentDisabled = true;
+      });
+  }
+
   void _getTemperature({int sensorIndex}) {
     if (_isSocketConnected) {
       try {
@@ -396,7 +413,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 style: TextStyle(color: Colors.white, fontSize: 20.0),
               ),
               color: Colors.blue,
-              onPressed: _wifiConnect2,
+              onPressed: _wifiConnect,
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -438,119 +455,170 @@ class _MyHomePageState extends State<MyHomePage> {
               builder:
                   (BuildContext futureContext, AsyncSnapshot<bool> snapshot) {
                 if (snapshot.hasData) {
-                  return _controllerType == 0 ? joystick : pad;
+                  return _controllerType == 0
+                      ? DirectionController(
+                          onDirectionChanged: _onDirectionChanged,
+                          controllerType: 0,
+                          adjustmentsDisabled: _isAdjstmentDisabled,
+                        )
+                      : DirectionController(
+                          onDirectionChanged: _onDirectionChanged,
+                          controllerType: 1,
+                          adjustmentsDisabled: _isAdjstmentDisabled,
+                        );
                 } else {
                   return Text('Loading...');
                 }
               },
             ),
-            RaisedButton(
-              child: Text(
-                _controllerType == 1 ? "Show Joystick" : "Show Frecce",
-                style: TextStyle(color: Colors.white, fontSize: 20.0),
-              ),
-              color: Colors.blue,
-              onPressed: () {
-                // TODO add haptic feedback
-                //Feedback.forTap(context);
-                setState(() {
-                  if (_controllerType == 1)
-                    _controllerType = 0;
-                  else
-                    _controllerType = 1;
-                });
-              },
-            ),
-            RaisedButton(
-              child: Text(
-                !_isPasturaEjected ? "Eject Pastura" : "Reset pastura",
-                style: TextStyle(color: Colors.white, fontSize: 20.0),
-              ),
-              color: Colors.blue,
-              onPressed: !_isPasturaEjected ? _ejectPastura : _resetPastura,
-            ),
-            // Container(
-            //   child: Row(
-            //     mainAxisAlignment: MainAxisAlignment.center,
-            //     children: <Widget>[
-            //       Row(
-            //         children: <Widget>[
-            //           Text(
-            //             "Red",
-            //             style: TextStyle(color: Colors.black, fontSize: 18.0),
-            //           ),
-            //           Checkbox(
-            //             value: _isRgbRedOn,
-            //             onChanged: (value) {
-            //               setState(() {
-            //                 webSocket.send('#led;red;-1;\n');
-            //                 _isRgbRedOn = value;
-            //               });
-            //             },
-            //           ),
-            //         ],
-            //       ),
-            //       Row(
-            //         children: <Widget>[
-            //           Text(
-            //             "Green",
-            //             style: TextStyle(color: Colors.black, fontSize: 18.0),
-            //           ),
-            //           Checkbox(
-            //             value: _isRgbGreenOn,
-            //             onChanged: (value) {
-            //               setState(() {
-            //                 webSocket.send('#led;green;\n');
-            //                 _isRgbGreenOn = value;
-            //               });
-            //             },
-            //           ),
-            //         ],
-            //       ),
-            //       Row(
-            //         children: <Widget>[
-            //           Text(
-            //             "Blue",
-            //             style: TextStyle(color: Colors.black, fontSize: 18.0),
-            //           ),
-            //           Checkbox(
-            //             value: _isRgbBlueOn,
-            //             onChanged: (value) {
-            //               setState(() {
-            //                 webSocket.send('#led;blue;\n');
-            //                 _isRgbBlueOn = value;
-            //               });
-            //             },
-            //           ),
-            //         ],
-            //       ),
-            //       Row(
-            //         children: <Widget>[
-            //           Text(
-            //             "Back",
-            //             style: TextStyle(color: Colors.black, fontSize: 18.0),
-            //           ),
-            //           Checkbox(
-            //             value: _isBackLedOn,
-            //             onChanged: (value) {
-            //               setState(() {
-            //                 webSocket.send('#led;back;\n');
-            //                 _isBackLedOn = value;
-            //               });
-            //             },
-            //           ),
-            //         ],
-            //       ),
-            //     ],
-            //   ),
-            // ),
-            RaisedButton(
-              child: Text(
-                "Switch ${_isLedOn ? "off" : "on"} LED!",
-                style: TextStyle(color: Colors.white, fontSize: 20.0),
-              ),
-              color: _isLedOn ? Colors.red : Colors.green,
-              onPressed: _onLedButtonPressed,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Container(
+                  width: 160,
+                  padding: EdgeInsets.symmetric(horizontal: 10),
+                  child: Column(
+                    children: <Widget>[
+                      SizedBox(
+                        width: double.infinity,
+                        child: RaisedButton(
+                          child: Text(
+                            _controllerType == 1
+                                ? "Show Joystick"
+                                : "Show Frecce",
+                            textAlign: TextAlign.center,
+                            style:
+                                TextStyle(color: Colors.white, fontSize: 18.0),
+                          ),
+                          color: Colors.blue,
+                          onPressed: () {
+                            // TODO add haptic feedback
+                            //Feedback.forTap(context);
+                            setState(() {
+                              if (_controllerType == 1)
+                                _controllerType = 0;
+                              else
+                                _controllerType = 1;
+                            });
+                          },
+                        ),
+                      ),
+                      RaisedButton(
+                        child: Text(
+                          !_isPasturaEjected
+                              ? "Eject Pastura"
+                              : "Reset pastura",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.white, fontSize: 18.0),
+                        ),
+                        color: Colors.blue,
+                        onPressed:
+                            !_isPasturaEjected ? _ejectPastura : _resetPastura,
+                      ),
+                      // Container(
+                      //   child: Row(
+                      //     mainAxisAlignment: MainAxisAlignment.center,
+                      //     children: <Widget>[
+                      //       Row(
+                      //         children: <Widget>[
+                      //           Text(
+                      //             "Red",
+                      //             style: TextStyle(color: Colors.black, fontSize: 18.0),
+                      //           ),
+                      //           Checkbox(
+                      //             value: _isRgbRedOn,
+                      //             onChanged: (value) {
+                      //               setState(() {
+                      //                 webSocket.send('#led;red;-1;\n');
+                      //                 _isRgbRedOn = value;
+                      //               });
+                      //             },
+                      //           ),
+                      //         ],
+                      //       ),
+                      //       Row(
+                      //         children: <Widget>[
+                      //           Text(
+                      //             "Green",
+                      //             style: TextStyle(color: Colors.black, fontSize: 18.0),
+                      //           ),
+                      //           Checkbox(
+                      //             value: _isRgbGreenOn,
+                      //             onChanged: (value) {
+                      //               setState(() {
+                      //                 webSocket.send('#led;green;\n');
+                      //                 _isRgbGreenOn = value;
+                      //               });
+                      //             },
+                      //           ),
+                      //         ],
+                      //       ),
+                      //       Row(
+                      //         children: <Widget>[
+                      //           Text(
+                      //             "Blue",
+                      //             style: TextStyle(color: Colors.black, fontSize: 18.0),
+                      //           ),
+                      //           Checkbox(
+                      //             value: _isRgbBlueOn,
+                      //             onChanged: (value) {
+                      //               setState(() {
+                      //                 webSocket.send('#led;blue;\n');
+                      //                 _isRgbBlueOn = value;
+                      //               });
+                      //             },
+                      //           ),
+                      //         ],
+                      //       ),
+                      //       Row(
+                      //         children: <Widget>[
+                      //           Text(
+                      //             "Back",
+                      //             style: TextStyle(color: Colors.black, fontSize: 18.0),
+                      //           ),
+                      //           Checkbox(
+                      //             value: _isBackLedOn,
+                      //             onChanged: (value) {
+                      //               setState(() {
+                      //                 webSocket.send('#led;back;\n');
+                      //                 _isBackLedOn = value;
+                      //               });
+                      //             },
+                      //           ),
+                      //         ],
+                      //       ),
+                      //     ],
+                      //   ),
+                      // ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 140,
+                  child: Column(
+                    children: <Widget>[
+                      RaisedButton(
+                        child: Text(
+                          "${_isAdjstmentDisabled ? "Enable" : "Disable"} Adjstment",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.white, fontSize: 18.0),
+                        ),
+                        color: Colors.blue,
+                        onPressed: _onAdjstmentButtonPressed,
+                      ),
+                      RaisedButton(
+                        child: Text(
+                          "Switch ${_isLedOn ? "off" : "on"} LED!",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.white, fontSize: 18.0),
+                        ),
+                        color: _isLedOn ? Colors.red : Colors.green,
+                        onPressed: _onLedButtonPressed,
+                      ),
+                    ],
+                  ),
+                )
+              ],
             ),
             TemperatureSensor(
               value: _temperature,

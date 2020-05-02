@@ -14,18 +14,26 @@ class MotorsSpeed {
   static double rightAdjustment = 1;
 
   static int getLeft() {
-    int result = (MotorsSpeed.leftAdjustment * _left).floor();
+    //int result = (MotorsSpeed.leftAdjustment * _left).floor();
+    int result = _left;
     return result != null && result > minSpeed ? result : 0;
   }
 
   static int getRight() {
-    int result = (MotorsSpeed.rightAdjustment * _right).floor();
+    //int result = (MotorsSpeed.rightAdjustment * _right).floor();
+    int result = _right;
     return result != null && result > minSpeed ? result : 0;
   }
 
-  static void setMotorsSpeed({int left, int right}) {
+  static void setMotorsSpeed({int left, int right, bool includeAdjustments = false}) {
     if (left != null) _left = left;
+
     if (right != null) _right = right;
+
+    if (includeAdjustments) {
+      _right = (MotorsSpeed.rightAdjustment * _right).floor();
+      _left = (MotorsSpeed.leftAdjustment * _left).floor();
+    }
   }
 
   static void setMotorsSpeedFromPad(double degrees, double distance) {
@@ -45,7 +53,7 @@ class MotorsSpeed {
     int left = (leftSpeed * distance).round();
     int right = (rightSpeed * distance).round();
 
-    setMotorsSpeed(left: left, right: right);
+    setMotorsSpeed(left: left, right: right, includeAdjustments: true);
   }
 
   static void setAdjstment({double left, double right}) {

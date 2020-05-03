@@ -6,8 +6,11 @@ class MotorsSpeed {
   static int minSpeed = 250;
   static int maxSpeed = 1023;
 
-  static int _left = 0;
-  static int _right = 0;
+  static int _leftOut = 0;
+  static int _rightOut = 0;
+
+  static int _leftIn = 0;
+  static int _rightIn = 0;
 
   // 0.0 to 1.0
   static double leftAdjustment = 1;
@@ -15,24 +18,29 @@ class MotorsSpeed {
 
   static int getLeft() {
     //int result = (MotorsSpeed.leftAdjustment * _left).floor();
-    int result = _left;
+    int result = _leftOut;
     return result != null && result > minSpeed ? result : 0;
   }
 
   static int getRight() {
     //int result = (MotorsSpeed.rightAdjustment * _right).floor();
-    int result = _right;
+    int result = _rightOut;
     return result != null && result > minSpeed ? result : 0;
   }
 
-  static void setMotorsSpeed({int left, int right, bool includeAdjustments = false}) {
-    if (left != null) _left = left;
+  static void setMotorsSpeed({int left, int right, bool includeAdjustments = false,}) 
+  {
+    if (left != null) _leftIn = left;
 
-    if (right != null) _right = right;
+    if (right != null) _rightIn = right;
 
     if (includeAdjustments) {
-      _right = (MotorsSpeed.rightAdjustment * _right).floor();
-      _left = (MotorsSpeed.leftAdjustment * _left).floor();
+      _rightOut = (MotorsSpeed.rightAdjustment * _rightIn).floor();
+      _leftOut = (MotorsSpeed.leftAdjustment * _leftIn).floor();
+    } else
+    {
+      _rightOut = _rightIn;
+      _leftOut = _leftIn;
     }
   }
 

@@ -181,7 +181,7 @@ void checkHealthCheckTime()
     // don't check if alarm was already triggered or at the startup
     if (millis() - previousHealtCheck > maxTimeInterval)
     {
-      Serial.println("Server is dead! HealtCheck timer triggered.");
+      Serial.println("Websocket is dead! HealtCheck timer triggered.");
 
       // Do what you have to do when server gets lost
       stopMotors();
@@ -220,7 +220,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
     ledRgbGreen.off();
 
     isSocketConnected = false;
-    previousHealtCheck = 0;
 
     disconnectionCounter++;
 
@@ -231,10 +230,12 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
   }
   else if (type == WStype_ERROR)
   {
+    // Save the last time healtcheck was received
+    previousHealtCheck = millis();
+    
     ledRgbGreen.off();
 
     isSocketConnected = false;
-    previousHealtCheck = 0;
 
     Serial.println("WebSocket client error, stopping motors");
     stopMotors();
@@ -323,8 +324,8 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         else if (type == "on")
         {
           ledBack.on();
-          ledRgbRed.on();
-          ledRgbGreen.on();
+          // ledRgbRed.on(); // used to check start correctly
+          // ledRgbGreen.on(); // used to check websocket connectedion
           ledRgbBlue.on();
         }
       }
@@ -445,7 +446,7 @@ void setup()
   pinMode(TEMP_SENSORS_BUS, INPUT_PULLUP);
   sensors.begin();
   sensors.setResolution(tempSensor1, tempSensorResolution);
-  sensors.setResolution(tempSensor2, tempSensorResolution);
+  //sensors.setResolution(tempSensor2, tempSensorResolution);
 
   WiFi.persistent(false);
   // workaround DHCP crash on ESP32 when AP Mode!!!
@@ -460,10 +461,10 @@ void setup()
   webSocket.begin();
   webSocket.onEvent(webSocketEvent);
 
-  server.on("/", []() {
-    server.send_P(200, "text/html", webpage);
-  });
-  server.begin();
+  // server.on("/", []() {
+  //   server.send_P(200, "text/html", webpage);
+  // });
+  // server.begin();
 
   // setup finished, switch on red led
   ledRgbRed.on();
@@ -492,5 +493,9 @@ void loop()
     delay(500);
     ledRgbBlue.off();
     delay(500);
+
+    // websocket check led
+    if (ledRgbGreen.isOn)
+      ledRgbGreen.off();
   }
 }

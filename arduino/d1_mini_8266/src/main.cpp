@@ -19,6 +19,12 @@
 
 #define TEMP_SENSORS_BUS D3
 
+bool debug = true; // set false to avoid debug serial print
+bool debugSocket = false; // set false to avoid debug serial print
+
+const int MAX_MOTOR_SPEED = 1023;
+const int MIN_MOTOR_SPEED = 250; // sotto questa velocità i motori fischiano ma non si muove
+
 // temp sensor
 OneWire oneWire(TEMP_SENSORS_BUS);
 DallasTemperature sensors(&oneWire);
@@ -28,10 +34,9 @@ DeviceAddress tempSensor2 = {0x28, 0xAA, 0xD8, 0xDD, 0x4F, 0x14, 0x01, 0x96};
 
 int tempSensorResolution = 10;
 
-#define MAX_ANALOG_WRITE 1023
-
 ESP8266WebServer server;
 WebSocketsServer webSocket = WebSocketsServer(81);
+bool isSocketConnected = false;
 
 // Global variables
 char commandSeparator = ';';
@@ -41,15 +46,15 @@ LedController ledRgbBlue;
 LedController ledRgbGreen;
 LedController ledBack;
 
-double maxSpeed = 1023;
-double minMotorSpeed = 200; // sotto questa velocità i motori fischiano ma non si muove
-double maxTurningSpeed = 1023;
 // WiFiServer wifiServer(80);
 unsigned long previousHealtCheck = 0;
-unsigned long maxTimeInterval = 5000; // 5 seconds
+unsigned long maxTimeInterval = 1000; // 1 seconds
 
 String myPassword = "ciaociao";
 String mySsid = "BarkiFi";
+
+long disconnectionCounter = 0;
+long lastWifiClientCounter = 0;
 
 // IPAddress local_ip(192,168,1,4);
 // IPAddress gateway(192,168,1,1);
@@ -93,85 +98,38 @@ char webpage[] PROGMEM = R"=====(
 </html>
 )=====";
 
-double absPro(double x)
-{
-  return x > 0 ? x : -x;
-}
-
-int getLeftMotorValueNew(double degrees, double distance)
-{
-  double speedResult = 0;
-  if (degrees >= 0 && degrees <= 180)
-  {
-    speedResult = maxSpeed;
-  }
-  else
-  {
-    speedResult = maxSpeed * absPro(cos(radians(degrees)));
-  }
-  int result = speedResult * distance;
-  return result > minMotorSpeed ? result : 0;
-}
-
-int getRightMotorValueNew(double degrees, double distance)
-{
-  double speedResult = 0;
-  if (degrees >= 0 && degrees <= 180)
-  {
-    speedResult = maxSpeed * absPro(cos(radians(degrees)));
-  }
-  else
-  {
-    speedResult = maxSpeed;
-  }
-  int result = speedResult * distance;
-  return result > minMotorSpeed ? result : 0;
-}
-
 String setMotorsSpeed(int left, int right)
 {
-  if ((0 <= left && left <= MAX_ANALOG_WRITE) && (0 <= right && right <= MAX_ANALOG_WRITE))
+  if (left != 0)
   {
-    analogWrite(LEFT_MOTOR, left);
-    analogWrite(RIGHT_MOTOR, right);
-    return "OK";
+    if (left <= MIN_MOTOR_SPEED)
+      left = MIN_MOTOR_SPEED;
+    else
+      left = min(left, MAX_MOTOR_SPEED);
   }
-  else
+
+  if (right != 0)
   {
-    Serial.println("Not valid values");
-    return "Error";
+    if (right <= MIN_MOTOR_SPEED)
+      right = MIN_MOTOR_SPEED;
+    else
+      right = min(right, MAX_MOTOR_SPEED);
   }
+  if (debug)
+  {
+    Serial.print("setMotorsSpeed:");
+    Serial.print(" left = ");Serial.print(left);
+    Serial.print(" right = ");Serial.println(right);
+  }
+
+  analogWrite(LEFT_MOTOR, left);
+  analogWrite(RIGHT_MOTOR, right);
+  return "OK";
 }
 
 void stopMotors()
 {
   setMotorsSpeed(0, 0);
-}
-
-String setMotorsSpeedFromPad(double degrees, double distance)
-{
-  if (distance > 0)
-  {
-    int left = getLeftMotorValueNew(degrees, distance);
-    int right = getRightMotorValueNew(degrees, distance);
-    Serial.print("degrees: ");
-    Serial.println(degrees);
-    Serial.print("SX: ");
-    Serial.println(left);
-    Serial.print("DX: ");
-    Serial.println(right);
-    Serial.print("Distance: ");
-    Serial.println(distance);
-
-    setMotorsSpeed(left, right);
-    return "OK";
-  }
-  else
-  {
-    stopMotors();
-    Serial.println("Distance 0. Motors stopped");
-    return "Distance 0. Motors stopped";
-  }
 }
 
 String ejectPastura()
@@ -181,12 +139,14 @@ String ejectPastura()
     ejectServo.write(90);
     delay(500);
     ejectServo.write(0);
-    Serial.println("Pastura ejected");
+    if (debug)
+      Serial.println("Pastura ejected");
     return "OK";
   }
   else
   {
-    Serial.println("Servo not attached!");
+    if (debug)
+      Serial.println("Servo not attached!");
     return "Error!";
   }
 }
@@ -209,14 +169,6 @@ String getValue(String data, char separator, int index)
   return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
 }
 
-void serialFlush()
-{
-  while (Serial.available() > 0)
-  {
-    Serial.read();
-  }
-}
-
 // Check if Health Check time has been triggered. If so, the server is no more active
 void checkHealthCheckTime()
 {
@@ -225,7 +177,7 @@ void checkHealthCheckTime()
     // don't check if alarm was already triggered or at the startup
     if (millis() - previousHealtCheck > maxTimeInterval)
     {
-      Serial.println("Server is dead! HealtCheck timer triggered.");
+      Serial.println("Websocket is dead! HealtCheck timer triggered.");
 
       // Do what you have to do when server gets lost
       stopMotors();
@@ -239,36 +191,84 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 {
   if (type == WStype_CONNECTED)
   {
-    char payload[] = {"Hi! My name is Barkino."};
-    webSocket.broadcastTXT(payload, sizeof(payload));
+    // Save the last time healtcheck was received
+    previousHealtCheck = millis();
+
+    ledRgbGreen.on();
+
+    if (!isSocketConnected)
+    {
+      String payload = "Hi! My name is Barkino.";
+      Serial.println("WebSocket client connected.");
+      webSocket.broadcastTXT(payload);
+      isSocketConnected = true;
+    }
+    else
+    {
+      Serial.println("WebSocket client already connected.");
+    }
   }
   else if (type == WStype_DISCONNECTED)
   {
-    Serial.println("WebSocket client disconnected, stopping motors");
-    stopMotors();
+    // Save the last time healtcheck was received
+    previousHealtCheck = millis();
+
+    ledRgbGreen.off();
+
+    isSocketConnected = false;
+
+    disconnectionCounter++;
+
+    Serial.print("WebSocket client disconnection: ");Serial.println(disconnectionCounter);
+
+    // due to some connection errors, autoresolved with auto-reconnect, I don't stop motors suddenly
+    //stopMotors();
   }
   else if (type == WStype_ERROR)
   {
+    // Save the last time healtcheck was received
+    previousHealtCheck = millis();
+    
+    ledRgbGreen.off();
+
+    isSocketConnected = false;
+
     Serial.println("WebSocket client error, stopping motors");
     stopMotors();
   }
+  else if (type == WStype_PING)
+  {
+    // Save the last time healtcheck was received
+    previousHealtCheck = millis();
+
+    //Serial.print("<- ");Serial.print("WStype_PING ");Serial.println(millis());
+  }
+  else if (type == WStype_PONG)
+  {
+    // Save the last time healtcheck was received
+    previousHealtCheck = millis();
+
+    //Serial.print("<- ");Serial.print("WStype_PONG ");Serial.println(millis());
+  }
   else if (type == WStype_TEXT)
   {
+    // Save the last time healtcheck was received
+    previousHealtCheck = millis();
+
     String serialData = String((char *)payload);
     if (serialData.charAt(0) == '#')
     {
-      serialData = serialData.substring(1);
-      // uint16_t command = (uint16_t) strtol((const char *) &payload[1], NULL, 10);
-      // String command = (String) strtol((const char *) &payload[0], NULL, 10);
-
-      // String serialData = Serial.readStringUntil('!');
       serialData.trim();
-      Serial.println("****************************");
-      Serial.println(serialData);
+      serialData = serialData.substring(1);
+
+      if (debugSocket)
+      {
+        Serial.println("****************************");
+        Serial.print("<- ");Serial.println(serialData);
+      }
 
       // command is at pos 0
       String command = getValue(serialData, commandSeparator, 0);
-      Serial.println(command);
 
       if (command == "setMotorsSpeed")
       {
@@ -279,16 +279,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         int right = rightCommand.toInt();
 
         setMotorsSpeed(left, right);
-      }
-      else if (command == "setMotorsSpeedFromPad")
-      {
-        String degreesCmd = getValue(serialData, commandSeparator, 1);
-        String distanceCmd = getValue(serialData, commandSeparator, 2);
-
-        double degrees = degreesCmd.toDouble();
-        double distance = distanceCmd.toDouble();
-
-        setMotorsSpeedFromPad(degrees, distance);
       }
       else if (command == "stopMotors")
       {
@@ -323,18 +313,16 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         else if (type == "off")
         {
           ledBack.off();
-          ledRgbRed.off();
-          ledRgbGreen.off();
+          // ledRgbRed.on(); // used to check start correctly
+          // ledRgbGreen.off(); // used to check websocket connectedion
           ledRgbBlue.off();
-          Serial.println("Switched off!");
         }
         else if (type == "on")
         {
           ledBack.on();
-          ledRgbRed.on();
-          ledRgbGreen.on();
+          // ledRgbRed.on(); // used to check start correctly
+          // ledRgbGreen.on(); // used to check websocket connectedion
           ledRgbBlue.on();
-          Serial.println("Switched on!");
         }
       }
       else if (command == "sensors")
@@ -390,18 +378,19 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
             goOn = false;
           }
         }
-        Serial.println(result);
+        if (debugSocket) {
+          Serial.print("-> ");Serial.println(result);
+        }
         webSocket.broadcastTXT(result);
       }
       else if (command == "healthcheck")
       {
-        Serial.println("HealthCheck received, server is on.");
-        // Save the last time healtcheck was received
-        previousHealtCheck = millis();
-
         // Send back an healthcheck
-        char payload[] = {"healthcheck"};
-        webSocket.broadcastTXT(payload, sizeof(payload));
+        String payload = "healthcheck";
+        if (debugSocket) {
+          Serial.print("-> ");Serial.println(payload);
+        }
+        webSocket.broadcastTXT(payload);
       }
       else
       {
@@ -427,17 +416,17 @@ void setup()
   digitalWrite(RIGHT_MOTOR, LOW);
   digitalWrite(LEFT_MOTOR, LOW);
 
-  // create leds
-  ledBack.attach(LED_BACK, UNDEFINED);
-  ledRgbBlue.attach(LED_RGB_BLUE, BLUE);
-  ledRgbRed.attach(LED_RGB_RED, RED);
-  ledRgbGreen.attach(LED_RGB_GREEN, GREEN);
 
   // initialize servo
   ejectServo.attach(EJECT_SERVO);
   delay(15);
   ejectServo.write(0);
 
+  // create leds
+  ledBack.attach(LED_BACK, UNDEFINED);
+  ledRgbBlue.attach(LED_RGB_BLUE, BLUE);
+  ledRgbRed.attach(LED_RGB_RED, RED);
+  ledRgbGreen.attach(LED_RGB_GREEN, GREEN);
   // initialize sensors and set resolution
   sensors.begin();
   sensors.setResolution(tempSensor1, tempSensorResolution);
@@ -452,10 +441,10 @@ void setup()
   webSocket.begin();
   webSocket.onEvent(webSocketEvent);
 
-  server.on("/", []() {
-    server.send_P(200, "text/html", webpage);
-  });
-  server.begin();
+  // server.on("/", []() {
+  //   server.send_P(200, "text/html", webpage);
+  // });
+  // server.begin();
 
   // setup finished, switch on red led
   ledRgbRed.on();
@@ -463,12 +452,30 @@ void setup()
 
 void loop()
 {
-  webSocket.loop();
-  server.handleClient();
-  if (Serial.available() > 0)
+  if (WiFi.softAPgetStationNum() > 0)
   {
-    char c[] = {(char)Serial.read()};
-    webSocket.broadcastTXT(c, sizeof(c));
+    int connectedWifiClients = webSocket.connectedClients();
+    if (lastWifiClientCounter != connectedWifiClients) {
+      lastWifiClientCounter = connectedWifiClients;
+      disconnectionCounter = 0;
+      if (webSocket.connectedClients() > 0)
+        ledRgbGreen.on();
+      else
+        ledRgbGreen.off();
+    }
+    webSocket.loop();
+    // server.handleClient();
+    checkHealthCheckTime();
   }
-  checkHealthCheckTime();
+  else
+  {
+    ledRgbBlue.on();
+    delay(500);
+    ledRgbBlue.off();
+    delay(500);
+
+    // websocket check led
+    if (ledRgbGreen.isOn)
+      ledRgbGreen.off();
+  }
 }

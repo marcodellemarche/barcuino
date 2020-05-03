@@ -31,6 +31,24 @@ class DirectionController extends StatelessWidget {
       controllerType: controllerType,
     );
 
+    void _onAdjustmentDone(double newValue, String type) {
+      switch (type) {
+        case "left":
+          MotorsSpeed.setAdjstment(left: newValue);
+          break;
+        case "right":
+          MotorsSpeed.setAdjstment(right: newValue);
+          break;
+        default:
+          return;
+      }
+      MotorsSpeed.saveToSettings().then((_) {
+        MotorsSpeed.getFromSettings();
+      });
+      MotorsSpeed.setMotorsSpeed(includeAdjustments: true);
+      onDirectionChanged();
+    }
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: <Widget>[
@@ -41,11 +59,7 @@ class DirectionController extends StatelessWidget {
               startValue: MotorsSpeed.leftAdjustment.toDouble(),
               disabled: adjustmentsDisabled,
               onAdjustmentDone: (double newValue) {
-                MotorsSpeed.setAdjstment(left: newValue);
-                MotorsSpeed.saveToSettings().then((_) {
-                  MotorsSpeed.getFromSettings();
-                });
-                onDirectionChanged();
+                _onAdjustmentDone(newValue, "left");
               },
             ),
             Text(
@@ -62,11 +76,7 @@ class DirectionController extends StatelessWidget {
               startValue: MotorsSpeed.rightAdjustment.toDouble(),
               disabled: adjustmentsDisabled,
               onAdjustmentDone: (double newValue) {
-                MotorsSpeed.setAdjstment(right: newValue);
-                MotorsSpeed.saveToSettings().then((_) {
-                  MotorsSpeed.getFromSettings();
-                });
-                onDirectionChanged();
+                _onAdjustmentDone(newValue, "right");
               },
             ),
             Text(

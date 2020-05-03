@@ -190,7 +190,7 @@ class _MyHomePageState extends State<MyHomePage> {
         serverAddress: wsServerAddress,
         serverPort: wsServerPort,
         timeout: Duration(seconds: 5),
-        pingInterval: Duration(milliseconds: 500),
+        pingInterval: Duration(milliseconds: 750),
         listener: _onMessageReceived);
     webSocket.isOn.stream.listen((isConnected) {
       isConnected ? _onSocketConnectionSuccess() : _onSocketConnectionClosed();

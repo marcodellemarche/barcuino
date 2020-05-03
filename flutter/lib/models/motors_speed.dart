@@ -6,42 +6,40 @@ class MotorsSpeed {
   static int minSpeed = 250;
   static int maxSpeed = 1023;
 
-  static int _leftOut = 0;
-  static int _rightOut = 0;
+  static int _left = 0;
+  static int _right = 0;
 
-  static int _leftIn = 0;
-  static int _rightIn = 0;
+  static bool _adjustmentEnabled = true;
 
   // 0.0 to 1.0
   static double leftAdjustment = 1;
   static double rightAdjustment = 1;
 
   static int getLeft() {
-    //int result = (MotorsSpeed.leftAdjustment * _left).floor();
-    int result = _leftOut;
+    int result;
+    if (_adjustmentEnabled)    
+      result = (MotorsSpeed.leftAdjustment * _left).floor();
+    else
+      result = _left;
     return result != null && result > minSpeed ? result : 0;
   }
 
   static int getRight() {
-    //int result = (MotorsSpeed.rightAdjustment * _right).floor();
-    int result = _rightOut;
+    int result;
+    if (_adjustmentEnabled)
+      result = (MotorsSpeed.rightAdjustment * _right).floor();
+    else
+      result = _right;
     return result != null && result > minSpeed ? result : 0;
   }
 
   static void setMotorsSpeed({int left, int right, bool includeAdjustments = false,}) 
   {
-    if (left != null) _leftIn = left;
+    if (left != null) _left = left;
 
-    if (right != null) _rightIn = right;
+    if (right != null) _right = right;
 
-    if (includeAdjustments) {
-      _rightOut = (MotorsSpeed.rightAdjustment * _rightIn).floor();
-      _leftOut = (MotorsSpeed.leftAdjustment * _leftIn).floor();
-    } else
-    {
-      _rightOut = _rightIn;
-      _leftOut = _leftIn;
-    }
+    _adjustmentEnabled = includeAdjustments;
   }
 
   static void setMotorsSpeedFromPad(double degrees, double distance) {

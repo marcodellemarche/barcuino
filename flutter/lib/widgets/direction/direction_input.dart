@@ -24,7 +24,7 @@ class DirectionInput extends StatelessWidget {
     bool includeAdjstments = false;
 
     switch (buttonPressed) {
-      case ButtonPressed.LEFT:
+      case ButtonPressed.RIGHT:
         left = MotorsSpeed.maxSpeed;
         right = 0;
         break;
@@ -33,7 +33,7 @@ class DirectionInput extends StatelessWidget {
         right = MotorsSpeed.maxSpeed;
         includeAdjstments = true;
         break;
-      case ButtonPressed.RIGHT:
+      case ButtonPressed.LEFT:
         left = 0;
         right = MotorsSpeed.maxSpeed;
         break;

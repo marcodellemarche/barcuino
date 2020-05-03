@@ -45,7 +45,6 @@ class DirectionController extends StatelessWidget {
       MotorsSpeed.saveToSettings().then((_) {
         MotorsSpeed.getFromSettings();
       });
-      MotorsSpeed.setMotorsSpeed(includeAdjustments: true);
       onDirectionChanged();
     }
 

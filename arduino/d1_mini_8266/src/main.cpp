@@ -3,7 +3,7 @@
 #include <ESP8266WebServer.h>
 #include <WebSocketsServer.h>
 #include <Servo.h>
-#include <LedController.h>
+#include <AnalogController.h>
 #include <math.h>
 #include <DallasTemperature.h>
 
@@ -41,14 +41,16 @@ bool isSocketConnected = false;
 // Global variables
 char commandSeparator = ';';
 Servo ejectServo;
-LedController ledRgbRed;
-LedController ledRgbBlue;
-LedController ledRgbGreen;
-LedController ledBack;
+AnalogController ledRgbRed;
+AnalogController ledRgbBlue;
+AnalogController ledRgbGreen;
+AnalogController ledBack;
+AnalogController leftMotor;
+AnalogController rightMotor;
 
 // WiFiServer wifiServer(80);
 unsigned long previousHealtCheck = 0;
-unsigned long maxTimeInterval = 1000; // 1 seconds
+int healtCheckTimeout = 1000; // 1 seconds
 
 String myPassword = "ciaociao";
 String mySsid = "BarkiFi";
@@ -122,8 +124,8 @@ String setMotorsSpeed(int left, int right)
     Serial.print(" right = ");Serial.println(right);
   }
 
-  analogWrite(LEFT_MOTOR, left);
-  analogWrite(RIGHT_MOTOR, right);
+  leftMotor.setIntensity(left);
+  rightMotor.setIntensity(right);
   return "OK";
 }
 
@@ -175,7 +177,7 @@ void checkHealthCheckTime()
   if (previousHealtCheck > 0)
   {
     // don't check if alarm was already triggered or at the startup
-    if (millis() - previousHealtCheck > maxTimeInterval)
+    if (millis() - previousHealtCheck > healtCheckTimeout)
     {
       Serial.println("Websocket is dead! HealtCheck timer triggered.");
 
@@ -185,6 +187,23 @@ void checkHealthCheckTime()
       previousHealtCheck = 0;
     }
   }
+}
+
+void respondToCommand(bool isOk = true, String message = "") {
+  String payload = "#";
+
+  if (isOk) 
+    payload += "ok" + commandSeparator;
+  else
+    payload += "error" + commandSeparator;
+  
+  if (message != "")
+    payload += message + commandSeparator;
+  
+  if (debugSocket) {
+    Serial.print("-> ");Serial.println(payload);
+  }
+  webSocket.broadcastTXT(payload);
 }
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
@@ -279,14 +298,17 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         int right = rightCommand.toInt();
 
         setMotorsSpeed(left, right);
+        respondToCommand();
       }
       else if (command == "stopMotors")
       {
         setMotorsSpeed(0, 0);
+        respondToCommand();
       }
       else if (command == "ejectPastura")
       {
         ejectPastura();
+        respondToCommand();
       }
       else if (command == "led")
       {
@@ -297,18 +319,22 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         if (type == "green")
         {
           intensity != -1 ? ledRgbGreen.setIntensity(intensity) : ledRgbGreen.toggle();
+          respondToCommand();
         }
         else if (type == "red")
         {
           intensity != -1 ? ledRgbRed.setIntensity(intensity) : ledRgbRed.toggle();
+          respondToCommand();
         }
         else if (type == "blue")
         {
           intensity != -1 ? ledRgbBlue.setIntensity(intensity) : ledRgbBlue.toggle();
+          respondToCommand();
         }
         else if (type == "back")
         {
           intensity != -1 ? ledBack.setIntensity(intensity) : ledBack.toggle();
+          respondToCommand();
         }
         else if (type == "off")
         {
@@ -316,6 +342,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
           // ledRgbRed.on(); // used to check start correctly
           // ledRgbGreen.off(); // used to check websocket connectedion
           ledRgbBlue.off();
+          respondToCommand();
         }
         else if (type == "on")
         {
@@ -323,6 +350,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
           // ledRgbRed.on(); // used to check start correctly
           // ledRgbGreen.on(); // used to check websocket connectedion
           ledRgbBlue.on();
+          respondToCommand();
         }
       }
       else if (command == "sensors")
@@ -383,22 +411,53 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         }
         webSocket.broadcastTXT(result);
       }
+      else if (command == "setTimeout") {
+        String value = getValue(serialData, commandSeparator, 1); // value for setRes
+        int newHealtCheckTimeout = value.toInt(); // value in millis
+
+        if (newHealtCheckTimeout > 0 && newHealtCheckTimeout <= 25000)
+        {
+          healtCheckTimeout = newHealtCheckTimeout;
+          respondToCommand();
+        }
+        else
+        {
+          // resolution not supported
+          respondToCommand(false, "Resolution not supported!");
+        }
+      }
+      else if (command == "getStatus") {
+        // get status send back temperature and motors values
+        String result = "#status;";
+        result += "leftMotor;" + String(leftMotor.intensity);
+        result += "rightMotor;" + String(rightMotor.intensity);
+        result += "ledRgbRed;" + String(ledRgbRed.intensity);
+        result += "ledRgbGreen;" + String(ledRgbGreen.intensity);
+        result += "ledRgbBlue;" + String(ledRgbBlue.intensity);
+        result += "ledBack;" + String(ledBack.intensity);
+        result += "healtCheckTimeout;" + String(healtCheckTimeout);
+        
+        sensors.requestTemperaturesByAddress(tempSensor1);
+        float temp = sensors.getTempC(tempSensor1);
+        result = "temp;" + String(temp);
+
+        respondToCommand(true, result);
+      }
       else if (command == "healthcheck")
       {
         // Send back an healthcheck
-        String payload = "healthcheck";
-        if (debugSocket) {
-          Serial.print("-> ");Serial.println(payload);
-        }
-        webSocket.broadcastTXT(payload);
+        String result = "healthcheck";
+        respondToCommand(true, result);
       }
       else
       {
-        Serial.println("No valid command");
+        String result = "No valid command";
+        respondToCommand(false, result);
       }
     }
   }
 }
+
 
 void setup()
 {
@@ -416,6 +475,10 @@ void setup()
   digitalWrite(RIGHT_MOTOR, LOW);
   digitalWrite(LEFT_MOTOR, LOW);
 
+  // **********************************************
+  // AnalogWrite section
+  // Due to incompatibility between analogWrite library and Servo library, I had to rewrite the analog flow
+  // So, you have to setup different channels (1-15) for each analog pin
 
   // initialize servo
   ejectServo.attach(EJECT_SERVO);
@@ -423,11 +486,19 @@ void setup()
   ejectServo.write(0);
 
   // create leds
-  ledBack.attach(LED_BACK, UNDEFINED);
   ledRgbBlue.attach(LED_RGB_BLUE, BLUE);
   ledRgbRed.attach(LED_RGB_RED, RED);
   ledRgbGreen.attach(LED_RGB_GREEN, GREEN);
+  ledBack.attach(LED_BACK, UNDEFINED);
+
+  // create motors
+  rightMotor.attach(RIGHT_MOTOR, MOTOR);
+  leftMotor.attach(LEFT_MOTOR, MOTOR);
+
+  // **********************************************
+
   // initialize sensors and set resolution
+  pinMode(TEMP_SENSORS_BUS, INPUT_PULLUP);
   sensors.begin();
   sensors.setResolution(tempSensor1, tempSensorResolution);
   //sensors.setResolution(tempSensor2, tempSensorResolution);

@@ -26,6 +26,7 @@ uint8_t AnalogController::attach(int pin, AnalogType type, int channel, uint32_t
     _type = type;
     _channel = channel;
     _maxValue = maxValue;
+    intensity = 0;
 
     ledcSetup(channel, frequency, resolution);
     ledcAttachPin(_pin, channel);
@@ -65,13 +66,16 @@ void AnalogController::toggle()
   }
 }
 
-void analogControllerWrite(uint8_t channel, uint32_t value, uint32_t valueMax)
+void AnalogController::analogControllerWrite(uint32_t value)
 {
   // Make sure the pin was attached to a channel, if not do nothing
-  if (channel > 0 && channel < 16)
+  if (_channel > 0 && _channel < 16)
   {
     uint32_t levels = pow(2, resolution);
-    uint32_t duty = ((levels - 1) / valueMax) * min(value, valueMax);
+    uint32_t duty = ((levels - 1) / _maxValue) * min(value, _maxValue);
+    
+    intensity = value;    
+    isOn = intensity > 0 ? true : false;
 
     // Serial.println("****************");
     // Serial.print("value ");Serial.println(value);
@@ -82,39 +86,39 @@ void analogControllerWrite(uint8_t channel, uint32_t value, uint32_t valueMax)
     // Serial.println("****************");
 
     // write duty to LEDC
-    ledcWrite(channel, duty);
+    ledcWrite(_channel, duty);
   }
 }
 
-void AnalogController::setIntensity(int intensity)
+void AnalogController::setIntensity(int newIntensity)
 {
   if (_attached)
   {
     switch (_type)
     {
     case RED:
-      intensity = min(intensity, MAX_INTENSITY_RED);
+      newIntensity = min(intensity, MAX_INTENSITY_RED);
       break;
     case GREEN:
-      intensity = min(intensity, MAX_INTENSITY_GREEN);
+      newIntensity = min(intensity, MAX_INTENSITY_GREEN);
       break;
     case BLUE:
-      intensity = min(intensity, MAX_INTENSITY_BLUE);
+      newIntensity = min(intensity, MAX_INTENSITY_BLUE);
       break;
     case BACK:
-      intensity = min(intensity, MAX_INTENSITY_BACK);
+      newIntensity = min(intensity, MAX_INTENSITY_BACK);
+      break;
+
+    case MOTOR:
+      newIntensity = min(intensity, MAX_ANALOG_WRITE);
       break;
     case UNDEFINED:
-      intensity = min(intensity, MAX_ANALOG_WRITE);
-      break;
-    case MOTOR:
-      intensity = min(intensity, MAX_ANALOG_WRITE);
+      newIntensity = min(intensity, MAX_ANALOG_WRITE);
       break;
     default:
       return;
       break;
     }
-    analogControllerWrite(_channel, intensity, _maxValue);
-    isOn = intensity > 0 ? true : false;
+    analogControllerWrite(newIntensity);
   }
 }

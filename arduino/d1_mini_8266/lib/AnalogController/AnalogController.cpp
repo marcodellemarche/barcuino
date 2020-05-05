@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <LedController.h>
+#include <AnalogController.h>
 
 #define MAX_INTENSITY_RED 700
 #define MAX_INTENSITY_GREEN 800
@@ -8,39 +8,40 @@
 
 #define MAX_ANALOG_WRITE 1023
 
-LedController::LedController()
+AnalogController::AnalogController()
 {
   _attached = false;
   isOn = false;
 }
 
-uint8_t LedController::attach (int pin, LedType type) {
+uint8_t AnalogController::attach (int pin, AnalogType type) {
   if (!_attached) {
     _pin = pin;
     _type = type;
+    intensity = 0;
     pinMode(_pin, OUTPUT);
-    digitalWrite(_pin, LOW);
+    analogWrite(_pin, 0);
     _attached = true;
   }
 
   return pin;
 }
 
-void LedController::on () {
+void AnalogController::on () {
   if (_attached) {
     setIntensity(MAX_ANALOG_WRITE);
     isOn = true;
   }
 }
 
-void LedController::off () {
+void AnalogController::off () {
   if (_attached) {
     setIntensity(0);
     isOn = false;
   }
 }
 
-void LedController::toggle () {
+void AnalogController::toggle () {
   if (_attached) {
     if (isOn)
       on();
@@ -49,29 +50,33 @@ void LedController::toggle () {
   }
 }
 
-void LedController::setIntensity(int intensity) {
+void AnalogController::setIntensity(int newIntensity) {
   if (_attached) {
     switch (_type)
     {
       case RED:
-        intensity = min(intensity,MAX_INTENSITY_RED);
+        newIntensity = min(intensity,MAX_INTENSITY_RED);
         break;
       case GREEN:
-        intensity = min(intensity,MAX_INTENSITY_GREEN);
+        newIntensity = min(intensity,MAX_INTENSITY_GREEN);
         break;
       case BLUE:
-        intensity = min(intensity,MAX_INTENSITY_BLUE);
+        newIntensity = min(intensity,MAX_INTENSITY_BLUE);
         break;
       case BACK:
-        intensity = min(intensity,MAX_INTENSITY_BACK);
+        newIntensity = min(intensity,MAX_INTENSITY_BACK);
+        break;
+      case MOTOR:
+        newIntensity = min(intensity, MAX_ANALOG_WRITE);
         break;
       case UNDEFINED:
-        intensity = min(intensity,MAX_ANALOG_WRITE);
+        newIntensity = min(intensity,MAX_ANALOG_WRITE);
         break;    
       default:
         return;
         break;
     }
+    intensity = newIntensity;
     analogWrite(_pin, intensity);
     isOn = intensity > 0 ? true : false;
   }

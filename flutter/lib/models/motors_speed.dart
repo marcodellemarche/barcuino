@@ -18,7 +18,8 @@ class MotorsSpeed {
   static int getLeft() {
     int result;
     if (_adjustmentEnabled)    
-      result = (MotorsSpeed.leftAdjustment * _left).floor();
+      // left direction adjstment controls right motor and viceversa
+      result = (MotorsSpeed.rightAdjustment * _left).floor();
     else
       result = _left;
     return result != null && result > minSpeed ? result : 0;
@@ -27,7 +28,8 @@ class MotorsSpeed {
   static int getRight() {
     int result;
     if (_adjustmentEnabled)
-      result = (MotorsSpeed.rightAdjustment * _right).floor();
+      // left direction adjstment controls right motor and viceversa
+      result = (MotorsSpeed.leftAdjustment * _right).floor();
     else
       result = _right;
     return result != null && result > minSpeed ? result : 0;
@@ -63,6 +65,7 @@ class MotorsSpeed {
   }
 
   static void setAdjstment({double left, double right}) {
+    // left direction adjstment controls right motor and viceversa
     if (left != null) MotorsSpeed.leftAdjustment = left;
     if (right != null) MotorsSpeed.rightAdjustment = right;
   }

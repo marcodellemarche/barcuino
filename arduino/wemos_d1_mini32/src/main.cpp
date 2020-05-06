@@ -439,10 +439,12 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         result += "ledRgbBlue" + commandSeparator + String(ledRgbBlue.intensity) + commandSeparator;
         result += "ledBack" + commandSeparator + String(ledBack.intensity) + commandSeparator;
         result += "healtCheckTimeout" + commandSeparator + String(healtCheckTimeout) + commandSeparator;
+        result += "isHealtCheckTimeoutEnabled" + commandSeparator + String(isHealtCheckTimeoutEnabled) + commandSeparator;
+        result += "disconnectionCounter" + commandSeparator + String(disconnectionCounter) + commandSeparator;
         
         sensors.requestTemperaturesByAddress(tempSensor1);
         float temp = sensors.getTempC(tempSensor1);
-        result = "temp" + commandSeparator + String(temp) + commandSeparator;
+        result += "temp" + commandSeparator + String(temp) + commandSeparator;
 
         respondToCommand(num, true, result);
       }

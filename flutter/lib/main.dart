@@ -207,7 +207,7 @@ class _MyHomePageState extends State<MyHomePage> {
       _statusTimer = new Timer.periodic(Duration(seconds: 1), (timer) {
         if (_isSocketConnected) {
           //webSocket.send('#healthcheck;\n');
-          _getTemperature(sensorIndex: 1);
+          _getStatus();
         }
       });
     }
@@ -324,6 +324,23 @@ class _MyHomePageState extends State<MyHomePage> {
     if (_isSocketConnected) {
       try {
         webSocket.send('#sensors;${sensorIndex.toString()};getTemp;\n');
+      } catch (err) {
+        setState(() {
+          logMessages.add(err.toString());
+        });
+      }
+    } else {
+      setState(() {
+        logMessages.add('Socket not connected.');
+        _temperature = null;
+      });
+    }
+  }
+
+  void _getStatus() {
+    if (_isSocketConnected) {
+      try {
+        webSocket.send('#getStatus;\n');
       } catch (err) {
         setState(() {
           logMessages.add(err.toString());

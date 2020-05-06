@@ -53,6 +53,7 @@ AnalogController rightMotor;
 // WiFiServer wifiServer(80);
 unsigned long previousHealtCheck = 0;
 int healtCheckTimeout = 1000; // 1 seconds
+bool isHealtCheckTimeoutEnabled = true;
 
 const char *myPassword = "ciaociao";
 const char *mySsid = "BarkiFi";
@@ -176,7 +177,7 @@ String getValue(String data, char separator, int index)
 // Check if Health Check time has been triggered. If so, the server is no more active
 void checkHealthCheckTime()
 {
-  if (previousHealtCheck > 0)
+  if (isHealtCheckTimeoutEnabled && previousHealtCheck > 0)
   {
     // don't check if alarm was already triggered or at the startup
     if (millis() - previousHealtCheck > healtCheckTimeout)
@@ -416,10 +417,13 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
       else if (command == "setTimeout") {
         String value = getValue(serialData, commandSeparator, 1); // value for setRes
         int newHealtCheckTimeout = value.toInt(); // value in millis
-
-        if (newHealtCheckTimeout > 0 && newHealtCheckTimeout <= 25000)
+        if (newHealtCheckTimeout == 0) {
+          isHealtCheckTimeoutEnabled = false;
+        }
+        else if (newHealtCheckTimeout > 0 && newHealtCheckTimeout <= 25000)
         {
           healtCheckTimeout = newHealtCheckTimeout;
+          isHealtCheckTimeoutEnabled = true;
           respondToCommand();
         }
         else

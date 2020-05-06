@@ -41,7 +41,7 @@ WebSocketsServer webSocket = WebSocketsServer(81);
 bool isSocketConnected = false;
 
 // Global variables
-char commandSeparator = ';';
+String commandSeparator = ";";
 Servo ejectServo;
 AnalogController ledRgbRed;
 AnalogController ledRgbBlue;
@@ -52,7 +52,7 @@ AnalogController rightMotor;
 
 // WiFiServer wifiServer(80);
 unsigned long previousHealtCheck = 0;
-int healtCheckTimeout = 1000; // 1 seconds
+int healtCheckTimeout = 1600; // 1 seconds
 bool isHealtCheckTimeoutEnabled = true;
 
 const char *myPassword = "ciaociao";
@@ -156,7 +156,7 @@ String ejectPastura()
   }
 }
 
-String getValue(String data, char separator, int index)
+String getValue(String data, int index, char separator = commandSeparator.charAt(0))
 {
   int found = 0;
   int strIndex[] = {0, -1};
@@ -192,21 +192,24 @@ void checkHealthCheckTime()
   }
 }
 
-void respondToCommand(bool isOk = true, String message = "") {
-  String payload = "#";
+void respondToCommand(uint8_t num, bool isOk = true, String message = "") {
+  String response = "#";
 
-  if (isOk) 
-    payload += "ok" + commandSeparator;
+  if (isOk)
+    response += "ok" + commandSeparator;
   else
-    payload += "error" + commandSeparator;
+    response += "error" + commandSeparator;
   
-  if (message != "")
-    payload += message + commandSeparator;
+  if (message != "") {
+    response += message;
+    if (!message.endsWith(commandSeparator))
+      response += commandSeparator;
+  }
   
   if (debugSocket) {
-    Serial.print("-> ");Serial.println(payload);
+    Serial.print("-> ");Serial.println(response);
   }
-  webSocket.broadcastTXT(payload);
+  webSocket.sendTXT(num, response);
 }
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
@@ -220,10 +223,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 
     if (!isSocketConnected)
     {
-      String payload = "Hi! My name is Barkino.";
       Serial.println("WebSocket client connected.");
-      webSocket.broadcastTXT(payload);
       isSocketConnected = true;
+      respondToCommand(num, true, "Hi! My name is Barkino.");
     }
     else
     {
@@ -253,10 +255,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
     
     ledRgbGreen.off();
 
-    isSocketConnected = false;
-
     Serial.println("WebSocket client error, stopping motors");
     stopMotors();
+    respondToCommand(num, false, "WebSocket client error, stopping motors");
   }
   else if (type == WStype_PING)
   {
@@ -269,13 +270,13 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
   {
     // Save the last time healtcheck was received
     previousHealtCheck = millis();
-
     //Serial.print("<- ");Serial.print("WStype_PONG ");Serial.println(millis());
   }
   else if (type == WStype_TEXT)
   {
     // Save the last time healtcheck was received
     previousHealtCheck = millis();
+    isSocketConnected = true;
 
     String serialData = String((char *)payload);
     if (serialData.charAt(0) == '#')
@@ -290,54 +291,54 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
       }
 
       // command is at pos 0
-      String command = getValue(serialData, commandSeparator, 0);
+      String command = getValue(serialData, 0);
 
       if (command == "setMotorsSpeed")
       {
-        String leftCommand = getValue(serialData, commandSeparator, 1);
-        String rightCommand = getValue(serialData, commandSeparator, 2);
+        String leftCommand = getValue(serialData, 1);
+        String rightCommand = getValue(serialData, 2);
 
         int left = leftCommand.toInt();
         int right = rightCommand.toInt();
 
         setMotorsSpeed(left, right);
-        respondToCommand();
+        respondToCommand(num);
       }
       else if (command == "stopMotors")
       {
         setMotorsSpeed(0, 0);
-        respondToCommand();
+        respondToCommand(num);
       }
       else if (command == "ejectPastura")
       {
         ejectPastura();
-        respondToCommand();
+        respondToCommand(num);
       }
       else if (command == "led")
       {
-        String type = getValue(serialData, commandSeparator, 1);
-        String intensityCmd = getValue(serialData, commandSeparator, 2);
+        String type = getValue(serialData, 1);
+        String intensityCmd = getValue(serialData, 2);
         int intensity = intensityCmd != "" ? intensityCmd.toInt() : -1;
 
         if (type == "green")
         {
           intensity != -1 ? ledRgbGreen.setIntensity(intensity) : ledRgbGreen.toggle();
-          respondToCommand();
+          respondToCommand(num);
         }
         else if (type == "red")
         {
           intensity != -1 ? ledRgbRed.setIntensity(intensity) : ledRgbRed.toggle();
-          respondToCommand();
+          respondToCommand(num);
         }
         else if (type == "blue")
         {
           intensity != -1 ? ledRgbBlue.setIntensity(intensity) : ledRgbBlue.toggle();
-          respondToCommand();
+          respondToCommand(num);
         }
         else if (type == "back")
         {
           intensity != -1 ? ledBack.setIntensity(intensity) : ledBack.toggle();
-          respondToCommand();
+          respondToCommand(num);
         }
         else if (type == "off")
         {
@@ -345,7 +346,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
           // ledRgbRed.on(); // used to check start correctly
           // ledRgbGreen.off(); // used to check websocket connectedion
           ledRgbBlue.off();
-          respondToCommand();
+          respondToCommand(num);
         }
         else if (type == "on")
         {
@@ -353,15 +354,15 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
           // ledRgbRed.on(); // used to check start correctly
           // ledRgbGreen.on(); // used to check websocket connectedion
           ledRgbBlue.on();
-          respondToCommand();
+          respondToCommand(num);
         }
       }
       else if (command == "sensors")
       {
-        bool goOn = true;
-        String type = getValue(serialData, commandSeparator, 1);
+        bool isOk = true;
+        String type = getValue(serialData, 1);
         uint8_t *sensor = emptyAddress; // selected sensor address
-        String result;
+        String result = "";
 
         if (type == "1")
           sensor = tempSensor1;
@@ -371,21 +372,21 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         {
           // command error
           result = "Sensor type not found!";
-          goOn = false;
+          isOk = false;
         }
 
-        if (goOn)
+        if (isOk)
         {
-          String function = getValue(serialData, commandSeparator, 2); //getTemp or setRes
+          String function = getValue(serialData, 2); //getTemp or setRes
           if (function == "getTemp")
           {
             sensors.requestTemperaturesByAddress(sensor);
             float temp = sensors.getTempC(sensor);
-            result = "#getTemp;" + String(temp);
+            result = "temp;" + String(temp);
           }
           else if (function == "setRes")
           {
-            String value = getValue(serialData, commandSeparator, 3); // value for setRes
+            String value = getValue(serialData, 3); // value for setRes
             int newResolution = value.toInt();
 
             if (newResolution >= 9 && newResolution <= 11)
@@ -393,29 +394,25 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
               sensors.setResolution(sensor, newResolution);
               Serial.print("Resolution set to: ");
               Serial.println(newResolution);
-              result = "Ok!";
             }
             else
             {
               // resolution not supported
               result = "Resolution not supported!";
-              goOn = false;
+              isOk = false;
             }
           }
           else
           {
             // function error
             result = "Function not valid!";
-            goOn = false;
+            isOk = false;
           }
         }
-        if (debugSocket) {
-          Serial.print("-> ");Serial.println(result);
-        }
-        webSocket.broadcastTXT(result);
+        respondToCommand(num, isOk, result);
       }
       else if (command == "setTimeout") {
-        String value = getValue(serialData, commandSeparator, 1); // value for setRes
+        String value = getValue(serialData, 1); // value for setRes
         int newHealtCheckTimeout = value.toInt(); // value in millis
         if (newHealtCheckTimeout == 0) {
           isHealtCheckTimeoutEnabled = false;
@@ -424,41 +421,41 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         {
           healtCheckTimeout = newHealtCheckTimeout;
           isHealtCheckTimeoutEnabled = true;
-          respondToCommand();
+          respondToCommand(num);
         }
         else
         {
           // resolution not supported
-          respondToCommand(false, "Resolution not supported!");
+          respondToCommand(num, false, "Resolution not supported!");
         }
       }
       else if (command == "getStatus") {
         // get status send back temperature and motors values
-        String result = "#status;";
-        result += "leftMotor;" + String(leftMotor.intensity);
-        result += "rightMotor;" + String(rightMotor.intensity);
-        result += "ledRgbRed;" + String(ledRgbRed.intensity);
-        result += "ledRgbGreen;" + String(ledRgbGreen.intensity);
-        result += "ledRgbBlue;" + String(ledRgbBlue.intensity);
-        result += "ledBack;" + String(ledBack.intensity);
-        result += "healtCheckTimeout;" + String(healtCheckTimeout);
+        String result = "status";
+        result += "leftMotor" + commandSeparator + String(leftMotor.intensity) + commandSeparator;
+        result += "rightMotor" + commandSeparator + String(rightMotor.intensity) + commandSeparator;
+        result += "ledRgbRed" + commandSeparator + String(ledRgbRed.intensity) + commandSeparator;
+        result += "ledRgbGreen" + commandSeparator + String(ledRgbGreen.intensity) + commandSeparator;
+        result += "ledRgbBlue" + commandSeparator + String(ledRgbBlue.intensity) + commandSeparator;
+        result += "ledBack" + commandSeparator + String(ledBack.intensity) + commandSeparator;
+        result += "healtCheckTimeout" + commandSeparator + String(healtCheckTimeout) + commandSeparator;
         
         sensors.requestTemperaturesByAddress(tempSensor1);
         float temp = sensors.getTempC(tempSensor1);
-        result = "temp;" + String(temp);
+        result = "temp" + commandSeparator + String(temp) + commandSeparator;
 
-        respondToCommand(true, result);
+        respondToCommand(num, true, result);
       }
       else if (command == "healthcheck")
       {
         // Send back an healthcheck
         String result = "healthcheck";
-        respondToCommand(true, result);
+        respondToCommand(num, true, result);
       }
       else
       {
         String result = "No valid command";
-        respondToCommand(false, result);
+        respondToCommand(num, false, result);
       }
     }
   }

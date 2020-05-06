@@ -43,6 +43,18 @@ class Settings {
       key: 'socketServerIp',
       dataType: 'string',
     ),
+    Setting(
+      key: 'arduinoTimeoutEnabled',
+      dataType: 'bool',
+    ),
+    Setting(
+      key: 'arduinoTimeout',
+      dataType: 'int',
+    ),
+    Setting(
+      key: 'websocketTimeout',
+      dataType: 'bool',
+    ),
   ];
 
   Future<dynamic> getByKey(String key) {

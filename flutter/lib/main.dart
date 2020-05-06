@@ -243,10 +243,37 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _onMessageReceived(String serverMessage) {
-    if (serverMessage.startsWith('#getTemp;')) {
-      String value = serverMessage.split(';')[1];
-      setState(() => _temperature = double.tryParse(value));
-    } else {
+    if (serverMessage.startsWith('#')) {
+      List<String> receivedCommands = serverMessage.substring(1).split(';');
+      if (receivedCommands[0] == "ok") {
+        // is an ok response to last command
+        bool atLeastOneCommand = false;
+
+        if(receivedCommands.contains("temp")) {
+          atLeastOneCommand = true;
+          int indexOfValue = receivedCommands.indexOf("temp") + 1;
+          String value = receivedCommands[indexOfValue];
+          setState(() => _temperature = double.tryParse(value));
+        }
+
+        if (!atLeastOneCommand) {
+          String message = receivedCommands[1];
+          if (message.isNotEmpty)
+            setState(() => logMessages.add(message));
+        }
+      }
+      else if (serverMessage.startsWith('#error;')) {
+        // is an error response to last command
+        // TODO
+        setState(() => logMessages.add(serverMessage));
+      }
+      else {
+        // unknown message
+        setState(() => logMessages.add(serverMessage));
+      }
+    }
+    else {
+      // unknown message
       setState(() => logMessages.add(serverMessage));
     }
   }

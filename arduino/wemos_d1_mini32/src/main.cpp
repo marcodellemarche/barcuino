@@ -431,7 +431,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
       }
       else if (command == "getStatus") {
         // get status send back temperature and motors values
-        String result = "status";
+        String result = "status" + commandSeparator;
         result += "leftMotor" + commandSeparator + String(leftMotor.intensity) + commandSeparator;
         result += "rightMotor" + commandSeparator + String(rightMotor.intensity) + commandSeparator;
         result += "ledRgbRed" + commandSeparator + String(ledRgbRed.intensity) + commandSeparator;

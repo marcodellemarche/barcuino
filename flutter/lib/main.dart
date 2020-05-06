@@ -243,6 +243,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _onMessageReceived(String serverMessage) {
+    print(serverMessage);
     if (serverMessage.startsWith('#')) {
       List<String> receivedCommands = serverMessage.substring(1).split(';');
       if (receivedCommands[0] == "ok") {

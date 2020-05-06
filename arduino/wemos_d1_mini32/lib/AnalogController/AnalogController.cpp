@@ -79,10 +79,11 @@ void AnalogController::analogControllerWrite(uint32_t value)
 
     // Serial.println("****************");
     // Serial.print("value ");Serial.println(value);
-    // Serial.print("valueMax ");Serial.println(valueMax);
+    // Serial.print("valueMax ");Serial.println(_maxValue);
     // Serial.print("resolution ");Serial.println(resolution);
     // Serial.print("levels ");Serial.println(levels);
     // Serial.print("duty ");Serial.println(duty);
+    // Serial.print("channel ");Serial.println(_channel);
     // Serial.println("****************");
 
     // write duty to LEDC
@@ -97,23 +98,23 @@ void AnalogController::setIntensity(int newIntensity)
     switch (_type)
     {
     case RED:
-      newIntensity = min(intensity, MAX_INTENSITY_RED);
+      newIntensity = min(newIntensity, MAX_INTENSITY_RED);
       break;
     case GREEN:
-      newIntensity = min(intensity, MAX_INTENSITY_GREEN);
+      newIntensity = min(newIntensity, MAX_INTENSITY_GREEN);
       break;
     case BLUE:
-      newIntensity = min(intensity, MAX_INTENSITY_BLUE);
+      newIntensity = min(newIntensity, MAX_INTENSITY_BLUE);
       break;
     case BACK:
-      newIntensity = min(intensity, MAX_INTENSITY_BACK);
+      newIntensity = min(newIntensity, MAX_INTENSITY_BACK);
       break;
 
     case MOTOR:
-      newIntensity = min(intensity, MAX_ANALOG_WRITE);
+      newIntensity = min(newIntensity, MAX_ANALOG_WRITE);
       break;
     case UNDEFINED:
-      newIntensity = min(intensity, MAX_ANALOG_WRITE);
+      newIntensity = min(newIntensity, MAX_ANALOG_WRITE);
       break;
     default:
       return;

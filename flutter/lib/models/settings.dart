@@ -11,10 +11,21 @@ class Setting {
 class Settings {
   static Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
 
-  double leftMotorAdjustment;
-  double rightMotorAdjustment;
+  static bool arduinoTimeoutEnabled;
+  static int arduinoTimeout;
+  static bool statusTimerEnabled;
+  static int statusTimer;
+  static String wifiSSID;
+  static String wifiPassword;
+  static String webSocketIp;
+  static int webSocketPort;
+  static int connectionPing;
+  static bool autoReconnectSocketEnabled;
 
-  List<Setting> _list = [
+  static double leftAdjustment;
+  static double rightAdjustment;
+
+  static List<Setting> _list = [
     Setting(
       key: 'leftAdjustment',
       dataType: 'double',
@@ -24,7 +35,7 @@ class Settings {
       dataType: 'double',
     ),
     Setting(
-      key: 'autoReconnect',
+      key: 'autoReconnectSocketEnabled',
       dataType: 'bool',
     ),
     Setting(
@@ -52,16 +63,23 @@ class Settings {
       dataType: 'int',
     ),
     Setting(
-      key: 'websocketTimeout',
+      key: 'connectionPing',
+      dataType: 'int',
+    ),
+    Setting(
+      key: 'statusTimerEnabled',
       dataType: 'bool',
+    ),
+    Setting(
+      key: 'statusTimer',
+      dataType: 'int',
     ),
   ];
 
-  Future<dynamic> getByKey(String key) {
+  static Future<dynamic> getByKey(String key) {
     dynamic result;
     Setting setting = _searchSetting(key);
     if (setting != null) {
-
       switch (setting.dataType) {
         case 'bool':
           result = _prefs.then((SharedPreferences prefs) {
@@ -90,7 +108,7 @@ class Settings {
     return result;
   }
 
-  Future<bool> setByKey(String key, dynamic value) async {
+  static Future<bool> setByKey(String key, dynamic value) async {
     Setting setting = _searchSetting(key);
     if (setting != null) {
       SharedPreferences prefs = await _prefs;
@@ -128,13 +146,48 @@ class Settings {
       }
 
       return false;
-    }
-    else
+    } else
       return false;
   }
 
-  Setting _searchSetting(String key) {
+  static Setting _searchSetting(String key) {
     return _list.firstWhere((setting) => setting.key == key,
         orElse: () => null);
+  }
+
+  static Future<bool> loadSettings() async {
+    try {
+      arduinoTimeoutEnabled = await getByKey('arduinoTimeoutEnabled') ?? true;
+      arduinoTimeout = await getByKey('arduinoTimeout') ?? 2300;
+      statusTimerEnabled = await getByKey('statusTimerEnabled') ?? true;
+      statusTimer = await getByKey('statusTimer') ?? 1000;
+      wifiSSID = await getByKey('wifiSSID') ?? 'BarkiFi';
+      wifiPassword = await getByKey('wifiPassword') ?? 'ciaociao';
+      webSocketIp = await getByKey('webSocketIp') ?? '192.168.4.1';
+      webSocketPort = await getByKey('webSocketPort') ?? 81;
+      connectionPing = await getByKey('connectionPing') ?? 750;
+      autoReconnectSocketEnabled = await getByKey('autoReconnectSocketEnabled') ?? true;
+    } catch (err) {
+      print(err.toString());
+    }
+    return true;
+  }
+
+  static Future<bool> saveSettings() async {
+    try {
+      await setByKey('arduinoTimeoutEnabled', arduinoTimeoutEnabled);
+      await setByKey('arduinoTimeout', arduinoTimeout);
+      await setByKey('statusTimerEnabled', statusTimerEnabled);
+      await setByKey('statusTimer', statusTimer);
+      await setByKey('wifiSSID', wifiSSID);
+      await setByKey('wifiPassword', wifiPassword);
+      await setByKey('webSocketIp', webSocketIp);
+      await setByKey('webSocketPort', webSocketPort);
+      await setByKey('connectionPing', connectionPing);
+      await setByKey('autoReconnectSocketEnabled', autoReconnectSocketEnabled);
+    } catch (err) {
+      print(err.toString());
+    }
+    return true;
   }
 }

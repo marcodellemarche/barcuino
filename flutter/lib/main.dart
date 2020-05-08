@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:gateway/gateway.dart';
 import 'package:connectivity/connectivity.dart';
+import 'package:preferences/preference_service.dart';
 import 'package:wifi/wifi.dart';
 import 'package:wifi_configuration/wifi_configuration.dart';
 
+import './models/settings.dart';
+import './screens/settings_screen.dart';
 import './websockets.dart';
 import './utils.dart';
 import './widgets/direction/direction_controller.dart';
@@ -13,7 +15,11 @@ import './widgets/log_messages.dart';
 import './widgets/temperature.dart';
 import './models/motors_speed.dart';
 
-void main() => runApp(MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await PrefService.init(prefix: 'pref_');
+  runApp(MyApp());
+}
 
 class MyApp extends StatelessWidget {
   final String _title = 'Barkino';
@@ -38,8 +44,8 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   static WebSocketsNotifications webSocket = new WebSocketsNotifications();
-  String wsServerAddress = '192.168.4.1';
-  int wsServerPort = 81;
+  //String wsServerAddress = '192.168.4.1';
+  //int wsServerPort = 81;
   static bool _isSocketConnected = false;
   bool _isPasturaEjected = false;
   bool _isLedOn = false;
@@ -54,21 +60,13 @@ class _MyHomePageState extends State<MyHomePage> {
   double _temperature;
   int _controllerType = 1;
 
-  bool _autoReconnectSocket = true;
   bool _isManuallyDisconnected = false;
 
   Timer _statusTimer;
   Timer _autoReconnectTimer;
   Timer _healthCheckTimer;
 
-  String ipGateway = '';
-
-  String ssid = 'BarkiFi';
-  String password = 'ciaociao';
-
-  TextEditingController _controller;
   StreamSubscription _onWifiChanged;
-  String showMessage = '';
   Future<bool> _dataLoaded;
 
   // // set as static objects to avoid re-building on each timer trigger
@@ -85,7 +83,8 @@ class _MyHomePageState extends State<MyHomePage> {
   // );
 
   Future<void> _wifiConnect2() async {
-    WifiConnectionStatus connectionResult = await Utils.connect(ssid, password);
+    WifiConnectionStatus connectionResult =
+        await Utils.connect(Settings.wifiSSID, Settings.wifiPassword);
 
     if (Utils.isWiFiConnected ||
         connectionResult == WifiConnectionStatus.connected) {
@@ -145,7 +144,8 @@ class _MyHomePageState extends State<MyHomePage> {
       Utils.isWiFiConnecting = true;
 
       try {
-        WifiState wifiState = await Wifi.connection(ssid, password);
+        WifiState wifiState =
+            await Wifi.connection(Settings.wifiSSID, Settings.wifiPassword);
 
         Utils.isWiFiConnecting = false;
         switch (wifiState) {
@@ -179,18 +179,18 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void _getGw() {
-    Gateway.info
-        .then((gw) => setState(() => ipGateway = gw.ip))
-        .catchError((error) => print('Error on get gw'));
-  }
+  // void _getGw() {
+  //   Gateway.info
+  //       .then((gw) => setState(() => ipGateway = gw.ip))
+  //       .catchError((error) => print('Error on get gw'));
+  // }
 
   void _socketConnect() {
     webSocket.initCommunication(
-        serverAddress: wsServerAddress,
-        serverPort: wsServerPort,
+        serverAddress: Settings.webSocketIp,
+        serverPort: Settings.webSocketPort,
         timeout: Duration(seconds: 5),
-        pingInterval: Duration(milliseconds: 750),
+        pingInterval: Duration(milliseconds: Settings.connectionPing),
         listener: _onMessageReceived);
     webSocket.isOn.stream.listen((isConnected) {
       isConnected ? _onSocketConnectionSuccess() : _onSocketConnectionClosed();
@@ -202,9 +202,15 @@ class _MyHomePageState extends State<MyHomePage> {
       //webSocket.addListener(_onMessageReceived);
       setState(() => _isSocketConnected = true);
       _stopAutoReconnectSocket();
-      if (_statusTimer != null) _statusTimer.cancel();
+      _setStatusTimer();
+    }
+  }
 
-      _statusTimer = new Timer.periodic(Duration(seconds: 1), (timer) {
+  void _setStatusTimer() {
+    if (_statusTimer != null) _statusTimer.cancel();
+    if (Settings.statusTimerEnabled) {
+      _statusTimer = new Timer.periodic(
+          Duration(milliseconds: Settings.statusTimer), (timer) {
         if (_isSocketConnected) {
           //webSocket.send('#healthcheck;\n');
           _getStatus();
@@ -217,7 +223,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (_isSocketConnected) {
       setState(() => _isSocketConnected = false);
       _socketDisconnect();
-      if (!_isManuallyDisconnected && _autoReconnectSocket) {
+      if (!_isManuallyDisconnected && Settings.autoReconnectSocketEnabled) {
         _startAutoReconnectSocket();
       }
     }
@@ -250,7 +256,7 @@ class _MyHomePageState extends State<MyHomePage> {
         // is an ok response to last command
         bool atLeastOneCommand = false;
 
-        if(receivedCommands.contains("temp")) {
+        if (receivedCommands.contains("temp")) {
           atLeastOneCommand = true;
           int indexOfValue = receivedCommands.indexOf("temp") + 1;
           String value = receivedCommands[indexOfValue];
@@ -259,28 +265,20 @@ class _MyHomePageState extends State<MyHomePage> {
 
         if (!atLeastOneCommand) {
           String message = receivedCommands[1];
-          if (message.isNotEmpty)
-            setState(() => logMessages.add(message));
+          if (message.isNotEmpty) setState(() => logMessages.add(message));
         }
-      }
-      else if (serverMessage.startsWith('#error;')) {
+      } else if (serverMessage.startsWith('#error;')) {
         // is an error response to last command
         // TODO
         setState(() => logMessages.add(serverMessage));
-      }
-      else {
+      } else {
         // unknown message
         setState(() => logMessages.add(serverMessage));
       }
-    }
-    else {
+    } else {
       // unknown message
       setState(() => logMessages.add(serverMessage));
     }
-  }
-
-  void _handleNewIp(String value) {
-    setState(() => wsServerAddress = value);
   }
 
   void _switchOnLed() {
@@ -321,23 +319,6 @@ class _MyHomePageState extends State<MyHomePage> {
       });
   }
 
-  void _getTemperature({int sensorIndex}) {
-    if (_isSocketConnected) {
-      try {
-        webSocket.send('#sensors;${sensorIndex.toString()};getTemp;\n');
-      } catch (err) {
-        setState(() {
-          logMessages.add(err.toString());
-        });
-      }
-    } else {
-      setState(() {
-        logMessages.add('Socket not connected.');
-        _temperature = null;
-      });
-    }
-  }
-
   void _getStatus() {
     if (_isSocketConnected) {
       try {
@@ -358,16 +339,6 @@ class _MyHomePageState extends State<MyHomePage> {
   void _resetPastura() {
     setState(() => _isPasturaEjected = false);
   }
-
-  // void _onSocketConnectionButtonPressed() {
-  //   if (_isSocketConnected) {
-  //     _isManuallyDisconnected = true;
-  //     _socketDisconnect();
-  //   } else {
-  //     _isManuallyDisconnected = false;
-  //     _socketConnect();
-  //   }
-  // }
 
   void _ejectPastura() {
     if (_isSocketConnected) {
@@ -423,22 +394,37 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  void _onSettingsChanged() {
+    print('Settings changed');
+    _setStatusTimer();
+    if (_isSocketConnected) {
+      int arduinoTimeout =
+          Settings.arduinoTimeoutEnabled ? Settings.arduinoTimeout : 0;
+      webSocket.send('#setTimeout;$arduinoTimeout;');
+    }
+  }
+
+  void _clearLogMessages() {
+    setState(() {
+      logMessages.clear();
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     _dataLoaded = MotorsSpeed.getFromSettings();
-    _controller = TextEditingController(text: wsServerAddress);
+    _dataLoaded = Settings.loadSettings();
     _onWifiChanged = Connectivity()
         .onConnectivityChanged
         .listen((ConnectivityResult result) {
-      // Got a new connectivity status!
+      print(result);
     });
   }
 
   @override
   void dispose() {
     super.dispose();
-    _controller.dispose();
     _onWifiChanged.cancel();
     _socketDisconnect();
   }
@@ -447,6 +433,22 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        actions: <Widget>[
+          IconButton(
+            icon: Icon(Icons.menu),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) {
+                    return SettingsScreen(
+                      onSettingChanged: _onSettingsChanged,
+                    );
+                  },
+                ),
+              );
+            },
+          )
+        ],
         title: Text(widget.title),
       ),
       // backgroundColor: Colors.white,
@@ -457,46 +459,64 @@ class _MyHomePageState extends State<MyHomePage> {
             SizedBox(
               height: 8,
             ),
-            RaisedButton(
-              child: Text(
-                !Utils.isWiFiConnected ? "Connect WiFi" : "Re-connect WiFi",
-                style: TextStyle(color: Colors.white, fontSize: 20.0),
-              ),
-              color: Colors.blue,
-              onPressed: _wifiConnect,
-            ),
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: <Widget>[
-                Container(
-                  margin: EdgeInsets.all(10),
-                  width: 150,
-                  height: 45,
-                  child: TextField(
-                    controller: _controller,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Server IP',
-                    ),
-                    readOnly: true,
-                    onChanged: _handleNewIp,
-                  ),
-                ),
-                // RaisedButton(
-                //   child: Text(
-                //     _isSocketConnected ? "Disconnect" : "Connect",
-                //     style: TextStyle(color: Colors.white, fontSize: 20.0),
-                //   ),
-                //   color: _isSocketConnected ? Colors.red : Colors.blue,
-                //   onPressed: _onSocketConnectionButtonPressed,
-                // ),
                 RaisedButton(
                   child: Text(
-                    _isSocketConnected ? "Connected" : "Disconnected",
+                    !Utils.isWiFiConnected ? "Connect WiFi" : "Re-connect WiFi",
                     style: TextStyle(color: Colors.white, fontSize: 20.0),
                   ),
+                  color: Colors.blue,
+                  onPressed: _wifiConnect,
+                ),
+                Card(
+                  elevation: 5,
+                  //margin: EdgeInsets.all(10),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 7,
+                    ),
+                    child: Text(
+                      _isSocketConnected ? "Connected" : "Disconnected",
+                      style: TextStyle(color: Colors.white, fontSize: 20.0),
+                    ),
+                  ),
                   color: _isSocketConnected ? Colors.green : Colors.red,
-                  onPressed: () {},
+                ),
+              ],
+            ),
+            Divider(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: <Widget>[
+                RaisedButton(
+                  child: Text(
+                    _controllerType == 1 ? "Show Joystick" : "Show Frecce",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white, fontSize: 18.0),
+                  ),
+                  color: Colors.blue,
+                  onPressed: () {
+                    // TODO add haptic feedback
+                    //Feedback.forTap(context);
+                    setState(() {
+                      if (_controllerType == 1)
+                        _controllerType = 0;
+                      else
+                        _controllerType = 1;
+                    });
+                  },
+                ),
+                RaisedButton(
+                  child: Text(
+                    "${_isAdjstmentDisabled ? "Enable" : "Disable"} Adjstment",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white, fontSize: 18.0),
+                  ),
+                  color: Colors.blue,
+                  onPressed: _onAdjstmentButtonPressed,
                 ),
               ],
             ),
@@ -521,153 +541,40 @@ class _MyHomePageState extends State<MyHomePage> {
                 }
               },
             ),
+            Divider(),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                Container(
-                  width: 160,
-                  padding: EdgeInsets.symmetric(horizontal: 10),
-                  child: Column(
-                    children: <Widget>[
-                      SizedBox(
-                        width: double.infinity,
-                        child: RaisedButton(
-                          child: Text(
-                            _controllerType == 1
-                                ? "Show Joystick"
-                                : "Show Frecce",
-                            textAlign: TextAlign.center,
-                            style:
-                                TextStyle(color: Colors.white, fontSize: 18.0),
-                          ),
-                          color: Colors.blue,
-                          onPressed: () {
-                            // TODO add haptic feedback
-                            //Feedback.forTap(context);
-                            setState(() {
-                              if (_controllerType == 1)
-                                _controllerType = 0;
-                              else
-                                _controllerType = 1;
-                            });
-                          },
-                        ),
-                      ),
-                      RaisedButton(
-                        child: Text(
-                          !_isPasturaEjected
-                              ? "Eject Pastura"
-                              : "Reset pastura",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.white, fontSize: 18.0),
-                        ),
-                        color: Colors.blue,
-                        onPressed:
-                            !_isPasturaEjected ? _ejectPastura : _resetPastura,
-                      ),
-                      // Container(
-                      //   child: Row(
-                      //     mainAxisAlignment: MainAxisAlignment.center,
-                      //     children: <Widget>[
-                      //       Row(
-                      //         children: <Widget>[
-                      //           Text(
-                      //             "Red",
-                      //             style: TextStyle(color: Colors.black, fontSize: 18.0),
-                      //           ),
-                      //           Checkbox(
-                      //             value: _isRgbRedOn,
-                      //             onChanged: (value) {
-                      //               setState(() {
-                      //                 webSocket.send('#led;red;-1;\n');
-                      //                 _isRgbRedOn = value;
-                      //               });
-                      //             },
-                      //           ),
-                      //         ],
-                      //       ),
-                      //       Row(
-                      //         children: <Widget>[
-                      //           Text(
-                      //             "Green",
-                      //             style: TextStyle(color: Colors.black, fontSize: 18.0),
-                      //           ),
-                      //           Checkbox(
-                      //             value: _isRgbGreenOn,
-                      //             onChanged: (value) {
-                      //               setState(() {
-                      //                 webSocket.send('#led;green;\n');
-                      //                 _isRgbGreenOn = value;
-                      //               });
-                      //             },
-                      //           ),
-                      //         ],
-                      //       ),
-                      //       Row(
-                      //         children: <Widget>[
-                      //           Text(
-                      //             "Blue",
-                      //             style: TextStyle(color: Colors.black, fontSize: 18.0),
-                      //           ),
-                      //           Checkbox(
-                      //             value: _isRgbBlueOn,
-                      //             onChanged: (value) {
-                      //               setState(() {
-                      //                 webSocket.send('#led;blue;\n');
-                      //                 _isRgbBlueOn = value;
-                      //               });
-                      //             },
-                      //           ),
-                      //         ],
-                      //       ),
-                      //       Row(
-                      //         children: <Widget>[
-                      //           Text(
-                      //             "Back",
-                      //             style: TextStyle(color: Colors.black, fontSize: 18.0),
-                      //           ),
-                      //           Checkbox(
-                      //             value: _isBackLedOn,
-                      //             onChanged: (value) {
-                      //               setState(() {
-                      //                 webSocket.send('#led;back;\n');
-                      //                 _isBackLedOn = value;
-                      //               });
-                      //             },
-                      //           ),
-                      //         ],
-                      //       ),
-                      //     ],
-                      //   ),
-                      // ),
-                    ],
+                RaisedButton(
+                  padding: EdgeInsets.symmetric(horizontal: 40),
+                  child: Text(
+                    !_isPasturaEjected ? "Eject Pastura!" : "Reset pastura",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20.0,
+                        fontWeight: FontWeight.bold),
                   ),
+                  color: Colors.blue,
+                  onPressed: !_isPasturaEjected ? _ejectPastura : _resetPastura,
                 ),
-                Container(
-                  width: 140,
-                  child: Column(
-                    children: <Widget>[
-                      RaisedButton(
-                        child: Text(
-                          "${_isAdjstmentDisabled ? "Enable" : "Disable"} Adjstment",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.white, fontSize: 18.0),
-                        ),
-                        color: Colors.blue,
-                        onPressed: _onAdjstmentButtonPressed,
-                      ),
-                      RaisedButton(
-                        child: Text(
-                          "Switch ${_isLedOn ? "off" : "on"} LED!",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.white, fontSize: 18.0),
-                        ),
-                        color: _isLedOn ? Colors.red : Colors.green,
-                        onPressed: _onLedButtonPressed,
-                      ),
-                    ],
+              ],
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                RaisedButton(
+                  child: Text(
+                    "Switch ${_isLedOn ? "off" : "on"} LED",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18.0,
+                    ),
                   ),
-                )
+                  color: _isLedOn ? Colors.red : Colors.green,
+                  onPressed: _onLedButtonPressed,
+                ),
               ],
             ),
             TemperatureSensor(
@@ -675,6 +582,7 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             LogMessages(
               messagesList: logMessages,
+              onClearPressed: _clearLogMessages,
             ),
           ],
         ),

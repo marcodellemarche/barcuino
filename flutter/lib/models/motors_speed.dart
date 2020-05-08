@@ -72,14 +72,13 @@ class MotorsSpeed {
 
   static Future<bool> saveToSettings() async {
     try {
-      Settings settings = Settings();
-      await settings
+      await Settings
           .setByKey('leftAdjustment', leftAdjustment)
           .then((bool result) {
         print('leftAdjustment saved $leftAdjustment. result $result');
         return result;
       });
-      await settings
+      await Settings
           .setByKey('rightAdjustment', rightAdjustment)
           .then((bool result) {
         print('rightAdjustment saved $rightAdjustment. result $result');
@@ -92,13 +91,13 @@ class MotorsSpeed {
   }
 
   static Future<bool> getFromSettings() async {
-    Settings settings = Settings();
-    leftAdjustment = await settings.getByKey('leftAdjustment') ?? 1;
+    leftAdjustment = await Settings.getByKey('leftAdjustment') ?? 1;
     print('leftAdjustment $leftAdjustment');
 
-    rightAdjustment = await settings.getByKey('rightAdjustment') ?? 1;
+    rightAdjustment = await Settings.getByKey('rightAdjustment') ?? 1;
     print('rightAdjustment $rightAdjustment');
 
     return true;
   }
+  
 }

@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 class LogMessages extends StatelessWidget {
   final List<String> messagesList;
+  final Function onClearPressed;
 
-  LogMessages({@required this.messagesList});
+  LogMessages({@required this.messagesList, this.onClearPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +38,8 @@ class LogMessages extends StatelessWidget {
                 ),
                 backgroundColor: Colors.red,
                 onPressed: () {
-                  messagesList.clear();
+                  if (onClearPressed != null)
+                    onClearPressed();
                 },
               ),
             ),

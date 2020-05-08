@@ -74,7 +74,9 @@ class WebSocketsNotifications {
         .then((webSocket) {
       try {
         if (webSocket != null) {
-          webSocket.pingInterval = pingInterval;
+          if (pingInterval != null) {
+            webSocket.pingInterval = pingInterval;
+          }
           _channel = new IOWebSocketChannel(webSocket);
 
           addListener(listener);

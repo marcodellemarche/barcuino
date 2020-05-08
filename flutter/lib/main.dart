@@ -43,6 +43,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  final _mainPageScaffoldKey = GlobalKey<ScaffoldState>();
   static WebSocketsNotifications webSocket = new WebSocketsNotifications();
   //String wsServerAddress = '192.168.4.1';
   //int wsServerPort = 81;
@@ -212,7 +213,7 @@ class _MyHomePageState extends State<MyHomePage> {
       _statusTimer = new Timer.periodic(
           Duration(milliseconds: Settings.statusTimer), (timer) {
         if (_isSocketConnected) {
-          //webSocket.send('#healthcheck;\n');
+          //sendMessage('#healthcheck;');
           _getStatus();
         }
       });
@@ -249,6 +250,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _onMessageReceived(String serverMessage) {
+    String snackBarContent;
+
     print(serverMessage);
     if (serverMessage.startsWith('#')) {
       List<String> receivedCommands = serverMessage.substring(1).split(';');
@@ -265,11 +268,17 @@ class _MyHomePageState extends State<MyHomePage> {
 
         if (!atLeastOneCommand) {
           String message = receivedCommands[1];
-          if (message.isNotEmpty) setState(() => logMessages.add(message));
+          if (message.isNotEmpty) {
+            setState(() => logMessages.add(message));
+            snackBarContent = 'Arduino response: ' + message;
+          } else {
+            snackBarContent = 'Arduino response: ok';
+          }
         }
       } else if (serverMessage.startsWith('#error;')) {
         // is an error response to last command
         // TODO
+        snackBarContent = 'ERROR! Arduino response: ' + serverMessage;
         setState(() => logMessages.add(serverMessage));
       } else {
         // unknown message
@@ -279,15 +288,29 @@ class _MyHomePageState extends State<MyHomePage> {
       // unknown message
       setState(() => logMessages.add(serverMessage));
     }
+
+    if (snackBarContent != null) {
+      SnackBar snackBar = SnackBar(
+        content: Text(snackBarContent),
+        duration: Duration(seconds: 1),
+        action: SnackBarAction(
+          label: 'Close',
+          onPressed: () {
+            _mainPageScaffoldKey.currentState.removeCurrentSnackBar();
+          },
+        ),
+      );
+      _mainPageScaffoldKey.currentState.showSnackBar(snackBar);
+    }
   }
 
   void _switchOnLed() {
-    webSocket.send('#led;on;\n');
+    sendMessage('#led;on;', hideSnackBar: true);
     setState(() => _isLedOn = true);
   }
 
   void _switchOffLed() {
-    webSocket.send('#led;off;\n');
+    sendMessage('#led;off;', hideSnackBar: true);
     setState(() => _isLedOn = false);
   }
 
@@ -322,7 +345,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void _getStatus() {
     if (_isSocketConnected) {
       try {
-        webSocket.send('#getStatus;\n');
+        sendMessage('#getStatus;');
       } catch (err) {
         setState(() {
           logMessages.add(err.toString());
@@ -353,7 +376,7 @@ class _MyHomePageState extends State<MyHomePage> {
         ).then((ConfirmAction response) {
           switch (response) {
             case ConfirmAction.accept:
-              webSocket.send('#ejectPastura;\n');
+              sendMessage('#ejectPastura;', hideSnackBar: true);
               Utils.asyncAlert(
                 context: context,
                 title: 'Fatto!',
@@ -386,11 +409,9 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  static void _onDirectionChanged() {
+  void _onDirectionChanged() {
     if (_isSocketConnected) {
-      webSocket.send(
-        '#setMotorsSpeed;${MotorsSpeed.getLeft()};${MotorsSpeed.getRight()};\n',
-      );
+      sendMessage('#setMotorsSpeed;${MotorsSpeed.getLeft()};${MotorsSpeed.getRight()};', hideSnackBar: true);
     }
   }
 
@@ -400,14 +421,21 @@ class _MyHomePageState extends State<MyHomePage> {
     if (_isSocketConnected) {
       if (Settings.timeoutChanged) {
         int arduinoTimeout = Settings.arduinoTimeoutEnabled ? Settings.arduinoTimeout : 0;
-        webSocket.send('#setTimeout;$arduinoTimeout;');
+        sendMessage('#setTimeout;$arduinoTimeout;', hideSnackBar: true);
         Settings.timeoutChanged = false;
       }
       if (Settings.websocketChanged) {
-        webSocket.send('#setWebSocket;${Settings.webSocketPing};${Settings.webSocketPongTimeout};${Settings.webSocketTimeoutsBeforeDisconnet};');
+        sendMessage('#setWebSocket;${Settings.webSocketPing};${Settings.webSocketPongTimeout};${Settings.webSocketTimeoutsBeforeDisconnet};', hideSnackBar: true);
         Settings.websocketChanged = false;
       }
     }
+  }
+
+  void sendMessage(String message, {bool hideSnackBar = false}) {
+    if (hideSnackBar) _mainPageScaffoldKey.currentState.removeCurrentSnackBar();
+    if (!message.endsWith('\n')) 
+      message += '\n';
+    webSocket.send(message);
   }
 
   void _clearLogMessages() {
@@ -438,6 +466,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _mainPageScaffoldKey,
       appBar: AppBar(
         actions: <Widget>[
           IconButton(
@@ -458,139 +487,144 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(widget.title),
       ),
       // backgroundColor: Colors.white,
-      body: Container(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: <Widget>[
-            SizedBox(
-              height: 8,
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: <Widget>[
-                RaisedButton(
-                  child: Text(
-                    !Utils.isWiFiConnected ? "Connect WiFi" : "Re-connect WiFi",
-                    style: TextStyle(color: Colors.white, fontSize: 20.0),
-                  ),
-                  color: Colors.blue,
-                  onPressed: _wifiConnect,
-                ),
-                Card(
-                  elevation: 5,
-                  //margin: EdgeInsets.all(10),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 7,
-                    ),
+      body: Builder(
+        builder: (context) => Container(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: <Widget>[
+              SizedBox(
+                height: 8,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: <Widget>[
+                  RaisedButton(
                     child: Text(
-                      _isSocketConnected ? "Connected" : "Disconnected",
+                      !Utils.isWiFiConnected
+                          ? "Connect WiFi"
+                          : "Re-connect WiFi",
                       style: TextStyle(color: Colors.white, fontSize: 20.0),
                     ),
+                    color: Colors.blue,
+                    onPressed: _wifiConnect,
                   ),
-                  color: _isSocketConnected ? Colors.green : Colors.red,
-                ),
-              ],
-            ),
-            Divider(),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: <Widget>[
-                RaisedButton(
-                  child: Text(
-                    _controllerType == 1 ? "Show Joystick" : "Show Frecce",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white, fontSize: 18.0),
-                  ),
-                  color: Colors.blue,
-                  onPressed: () {
-                    // TODO add haptic feedback
-                    //Feedback.forTap(context);
-                    setState(() {
-                      if (_controllerType == 1)
-                        _controllerType = 0;
-                      else
-                        _controllerType = 1;
-                    });
-                  },
-                ),
-                RaisedButton(
-                  child: Text(
-                    "${_isAdjstmentDisabled ? "Enable" : "Disable"} Adjstment",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white, fontSize: 18.0),
-                  ),
-                  color: Colors.blue,
-                  onPressed: _onAdjstmentButtonPressed,
-                ),
-              ],
-            ),
-            FutureBuilder(
-              future: _dataLoaded,
-              builder:
-                  (BuildContext futureContext, AsyncSnapshot<bool> snapshot) {
-                if (snapshot.hasData) {
-                  return _controllerType == 0
-                      ? DirectionController(
-                          onDirectionChanged: _onDirectionChanged,
-                          controllerType: 0,
-                          adjustmentsDisabled: _isAdjstmentDisabled,
-                        )
-                      : DirectionController(
-                          onDirectionChanged: _onDirectionChanged,
-                          controllerType: 1,
-                          adjustmentsDisabled: _isAdjstmentDisabled,
-                        );
-                } else {
-                  return Text('Loading...');
-                }
-              },
-            ),
-            Divider(),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                RaisedButton(
-                  padding: EdgeInsets.symmetric(horizontal: 40),
-                  child: Text(
-                    !_isPasturaEjected ? "Eject Pastura!" : "Reset pastura",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20.0,
-                        fontWeight: FontWeight.bold),
-                  ),
-                  color: Colors.blue,
-                  onPressed: !_isPasturaEjected ? _ejectPastura : _resetPastura,
-                ),
-              ],
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                RaisedButton(
-                  child: Text(
-                    "Switch ${_isLedOn ? "off" : "on"} LED",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18.0,
+                  Card(
+                    elevation: 5,
+                    //margin: EdgeInsets.all(10),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 7,
+                      ),
+                      child: Text(
+                        _isSocketConnected ? "Connected" : "Disconnected",
+                        style: TextStyle(color: Colors.white, fontSize: 20.0),
+                      ),
                     ),
+                    color: _isSocketConnected ? Colors.green : Colors.red,
                   ),
-                  color: _isLedOn ? Colors.red : Colors.green,
-                  onPressed: _onLedButtonPressed,
-                ),
-              ],
-            ),
-            TemperatureSensor(
-              value: _temperature,
-            ),
-            LogMessages(
-              messagesList: logMessages,
-              onClearPressed: _clearLogMessages,
-            ),
-          ],
+                ],
+              ),
+              Divider(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: <Widget>[
+                  RaisedButton(
+                    child: Text(
+                      _controllerType == 1 ? "Show Joystick" : "Show Frecce",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white, fontSize: 18.0),
+                    ),
+                    color: Colors.blue,
+                    onPressed: () {
+                      // TODO add haptic feedback
+                      //Feedback.forTap(context);
+                      setState(() {
+                        if (_controllerType == 1)
+                          _controllerType = 0;
+                        else
+                          _controllerType = 1;
+                      });
+                    },
+                  ),
+                  RaisedButton(
+                    child: Text(
+                      "${_isAdjstmentDisabled ? "Enable" : "Disable"} Adjstment",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white, fontSize: 18.0),
+                    ),
+                    color: Colors.blue,
+                    onPressed: _onAdjstmentButtonPressed,
+                  ),
+                ],
+              ),
+              FutureBuilder(
+                future: _dataLoaded,
+                builder:
+                    (BuildContext futureContext, AsyncSnapshot<bool> snapshot) {
+                  if (snapshot.hasData) {
+                    return _controllerType == 0
+                        ? DirectionController(
+                            onDirectionChanged: _onDirectionChanged,
+                            controllerType: 0,
+                            adjustmentsDisabled: _isAdjstmentDisabled,
+                          )
+                        : DirectionController(
+                            onDirectionChanged: _onDirectionChanged,
+                            controllerType: 1,
+                            adjustmentsDisabled: _isAdjstmentDisabled,
+                          );
+                  } else {
+                    return Text('Loading...');
+                  }
+                },
+              ),
+              Divider(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  RaisedButton(
+                    padding: EdgeInsets.symmetric(horizontal: 40),
+                    child: Text(
+                      !_isPasturaEjected ? "Eject Pastura!" : "Reset pastura",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20.0,
+                          fontWeight: FontWeight.bold),
+                    ),
+                    color: Colors.blue,
+                    onPressed:
+                        !_isPasturaEjected ? _ejectPastura : _resetPastura,
+                  ),
+                ],
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  RaisedButton(
+                    child: Text(
+                      "Switch ${_isLedOn ? "off" : "on"} LED",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18.0,
+                      ),
+                    ),
+                    color: _isLedOn ? Colors.red : Colors.green,
+                    onPressed: _onLedButtonPressed,
+                  ),
+                ],
+              ),
+              TemperatureSensor(
+                value: _temperature,
+              ),
+              LogMessages(
+                messagesList: logMessages,
+                onClearPressed: _clearLogMessages,
+              ),
+            ],
+          ),
         ),
       ),
     );

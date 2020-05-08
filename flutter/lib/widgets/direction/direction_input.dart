@@ -45,6 +45,7 @@ class DirectionInput extends StatelessWidget {
     }
 
     MotorsSpeed.setMotorsSpeed(left: left, right: right, includeAdjustments: includeAdjstments);
+    print('setMotorsSpeed');
 
     this.onDirectionChanged();
   }

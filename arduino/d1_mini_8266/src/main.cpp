@@ -36,6 +36,9 @@ int tempSensorResolution = 10;
 
 ESP8266WebServer server;
 WebSocketsServer webSocket = WebSocketsServer(81);
+int pingInterval = 750;
+int pongTimeout = 500;
+int wsTimeoutsBeforeDisconnet = 0;
 bool isSocketConnected = false;
 
 // Global variables
@@ -410,7 +413,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         respondToCommand(num, isOk, result);
       }
       else if (command == "setTimeout") {
-        String value = getValue(serialData, 1); // value for setRes
+        String value = getValue(serialData, 1);
         int newHealtCheckTimeout = value.toInt(); // value in millis
         if (newHealtCheckTimeout == 0) {
           isHealtCheckTimeoutEnabled = false;
@@ -426,6 +429,34 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
           // resolution not supported
           respondToCommand(num, false, "Resolution not supported!");
         }
+      }
+      else if (command == "setWebSocket") {
+        respondToCommand(num, false, "setWebSocket command not supported!");
+        // String strPingInterval = getValue(serialData, 1);
+        // String strPongTimeout = getValue(serialData, 2);
+        // String strWsTimeoutsBeforeDisconnet = getValue(serialData, 3);
+
+        // int newPingInterval = strPingInterval.toInt(); // value in millis
+        // int newPongTimeout = strPongTimeout.toInt(); // value in millis
+        // int newWsTimeoutsBeforeDisconnet = strWsTimeoutsBeforeDisconnet.toInt(); // value in millis
+
+        // if (newPingInterval == 0) {
+        //   webSocket.disableHeartbeat();
+        // }
+        // else if (newPingInterval > 0 && newPingInterval <= 25000 
+        //   && newPongTimeout > 0 && newPongTimeout <= 25000)
+        // {
+        //   pingInterval = newPingInterval;
+        //   pongTimeout = newPongTimeout;
+        //   wsTimeoutsBeforeDisconnet = newWsTimeoutsBeforeDisconnet;
+        //   webSocket.enableHeartbeat(pingInterval, pongTimeout, wsTimeoutsBeforeDisconnet);
+        //   respondToCommand(num);
+        // }
+        // else
+        // {
+        //   // resolution not supported
+        //   respondToCommand(num, false, "setWebSocket command error!");
+        // }
       }
       else if (command == "getStatus") {
         // get status send back temperature and motors values

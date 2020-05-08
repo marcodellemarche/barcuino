@@ -17,30 +17,41 @@ class Settings {
   static int statusTimer;
   static String wifiSSID;
   static String wifiPassword;
+  static int clientPing;
   static String webSocketIp;
   static int webSocketPort;
-  static int connectionPing;
+  static int webSocketPing;
+  static int webSocketPongTimeout;
+  static int webSocketTimeoutsBeforeDisconnet;
   static bool autoReconnectSocketEnabled;
 
+  static int defaultControllerType;
   static double leftAdjustment;
   static double rightAdjustment;
 
+  static bool timeoutChanged = false;
+  static bool websocketChanged = false;
+
   static List<Setting> _list = [
     Setting(
-      key: 'leftAdjustment',
-      dataType: 'double',
+      key: 'arduinoTimeoutEnabled',
+      dataType: 'bool',
     ),
     Setting(
-      key: 'rightAdjustment',
-      dataType: 'double',
+      key: 'arduinoTimeout',
+      dataType: 'int',
+    ),
+    Setting(
+      key: 'statusTimerEnabled',
+      dataType: 'bool',
+    ),
+    Setting(
+      key: 'statusTimer',
+      dataType: 'int',
     ),
     Setting(
       key: 'autoReconnectSocketEnabled',
       dataType: 'bool',
-    ),
-    Setting(
-      key: 'defaultControllerType',
-      dataType: 'string',
     ),
     Setting(
       key: 'wifiSsid',
@@ -51,28 +62,40 @@ class Settings {
       dataType: 'string',
     ),
     Setting(
-      key: 'socketServerIp',
+      key: 'clientPing',
+      dataType: 'int',
+    ),
+    Setting(
+      key: 'webSocketIp',
       dataType: 'string',
     ),
     Setting(
-      key: 'arduinoTimeoutEnabled',
-      dataType: 'bool',
-    ),
-    Setting(
-      key: 'arduinoTimeout',
+      key: 'webSocketPort',
       dataType: 'int',
     ),
     Setting(
-      key: 'connectionPing',
+      key: 'webSocketPing',
       dataType: 'int',
     ),
     Setting(
-      key: 'statusTimerEnabled',
-      dataType: 'bool',
+      key: 'webSocketPongTimeout',
+      dataType: 'int',
     ),
     Setting(
-      key: 'statusTimer',
+      key: 'webSocketTimeoutsBeforeDisconnet',
       dataType: 'int',
+    ),
+    Setting(
+      key: 'defaultControllerType',
+      dataType: 'string',
+    ),
+    Setting(
+      key: 'leftAdjustment',
+      dataType: 'double',
+    ),
+    Setting(
+      key: 'rightAdjustment',
+      dataType: 'double',
     ),
   ];
 
@@ -165,8 +188,12 @@ class Settings {
       wifiPassword = await getByKey('wifiPassword') ?? 'ciaociao';
       webSocketIp = await getByKey('webSocketIp') ?? '192.168.4.1';
       webSocketPort = await getByKey('webSocketPort') ?? 81;
-      connectionPing = await getByKey('connectionPing') ?? 750;
+      webSocketPing = await getByKey('webSocketPing') ?? 750;
+      webSocketPongTimeout = await getByKey('webSocketPongTimeout') ?? 500;
+      webSocketTimeoutsBeforeDisconnet = await getByKey('webSocketTimeoutsBeforeDisconnet') ?? 0;
+      clientPing = await getByKey('clientPing') ?? 750;
       autoReconnectSocketEnabled = await getByKey('autoReconnectSocketEnabled') ?? true;
+      defaultControllerType = await getByKey('defaultControllerType') ?? 1;
     } catch (err) {
       print(err.toString());
     }
@@ -183,8 +210,12 @@ class Settings {
       await setByKey('wifiPassword', wifiPassword);
       await setByKey('webSocketIp', webSocketIp);
       await setByKey('webSocketPort', webSocketPort);
-      await setByKey('connectionPing', connectionPing);
+      await setByKey('webSocketPing', webSocketPing);
+      await setByKey('webSocketPongTimeout', webSocketPongTimeout);
+      await setByKey('webSocketTimeoutsBeforeDisconnet', webSocketTimeoutsBeforeDisconnet);
+      await setByKey('clientPing', clientPing);
       await setByKey('autoReconnectSocketEnabled', autoReconnectSocketEnabled);
+      await setByKey('defaultControllerType', defaultControllerType);
     } catch (err) {
       print(err.toString());
     }

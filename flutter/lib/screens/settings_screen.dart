@@ -128,6 +128,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     int inputVal =
                         int.tryParse(PrefService.getString('arduinoTimeout'));
                     if (inputVal != null && Settings.arduinoTimeout != inputVal) {
+                      Settings.timeoutChanged = true;
                       Settings.arduinoTimeout = inputVal;
                       _saveSettings();
                     }
@@ -166,15 +167,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 /*******************************************************************/
-                PreferenceTitle('Connessione'),
+                PreferenceTitle('WebSocket Client (App)'),
                 PreferenceDialogLink(
-                  'Ping in millisecondi',
-                  desc: Settings.connectionPing.toString(),
+                  'Ping client in millisecondi',
+                  desc: Settings.clientPing.toString(),
                   onPop: () {
                     int inputVal =
-                        int.tryParse(PrefService.getString('connectionPing'));
-                    if (inputVal != null && Settings.connectionPing != inputVal) {
-                      Settings.connectionPing = inputVal;
+                        int.tryParse(PrefService.getString('clientPing'));
+                    if (inputVal != null && Settings.clientPing != inputVal) {
+                      Settings.clientPing = inputVal;
                       _saveSettings();
                     }
                   },
@@ -182,9 +183,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   dialog: PreferenceDialog(
                     [
                       TextFieldPreference(
-                        'Ping in millisecondi',
-                        'connectionPing',
-                        defaultVal: Settings.connectionPing.toString(),
+                        'Ping client in millisecondi',
+                        'clientPing',
+                        defaultVal: Settings.clientPing.toString(),
                         keyboardType: TextInputType.numberWithOptions(
                           decimal: false,
                           signed: false,
@@ -205,11 +206,184 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     submitText: 'Ok',
                     cancelText: 'Cancel',
                     onCancel: () {
-                      String previousVal = Settings.connectionPing.toString();
-                      PrefService.setString('connectionPing', previousVal);
+                      String previousVal = Settings.clientPing.toString();
+                      PrefService.setString('clientPing', previousVal);
                     },
                   ),
                 ),
+                PreferenceDialogLink(
+                  'Indirizzo Server WebSocket',
+                  desc: Settings.webSocketIp,
+                  onPop: () {
+                    String inputVal = PrefService.getString('webSocketIp');
+                    if (inputVal != null && Settings.webSocketIp != inputVal) {
+                      Settings.webSocketIp = inputVal;
+                      _saveSettings();
+                    }
+                  },
+                  barrierDismissible: false,
+                  dialog: PreferenceDialog(
+                    [
+                      TextFieldPreference(
+                        'Indirizzo IP',
+                        'webSocketIp',
+                        defaultVal: Settings.webSocketIp,
+                        keyboardType: TextInputType.numberWithOptions(
+                          decimal: false,
+                          signed: false,
+                        ),
+                        validator: (string) {
+                          RegExp regex = RegExp(r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$');
+                          return regex.hasMatch(string) ? null : 'Indirizzo IPv4. Es: 192.168.4.1';
+                        }
+                      ),
+                    ],
+                    title: 'Indirizzo Server WebSocket',
+                    onlySaveOnSubmit: true,
+                    submitText: 'Ok',
+                    cancelText: 'Cancel',
+                    onCancel: () {
+                      String previousVal = Settings.webSocketIp;
+                      PrefService.setString('webSocketServer', previousVal);
+                    },
+                  ),
+                ),
+                /*******************************************************************/
+                PreferenceTitle('WebSocket Server (Arduino)'),
+                PreferenceDialogLink(
+                  'Ping server in millisecondi',
+                  desc: Settings.webSocketPing.toString(),
+                  onPop: () {
+                    int inputVal =
+                        int.tryParse(PrefService.getString('webSocketPing'));
+                    if (inputVal != null && Settings.webSocketPing != inputVal) {
+                      Settings.websocketChanged = true;
+                      Settings.webSocketPing = inputVal;
+                      _saveSettings();
+                    }
+                  },
+                  barrierDismissible: false,
+                  dialog: PreferenceDialog(
+                    [
+                      TextFieldPreference(
+                        'Ping server in millisecondi',
+                        'webSocketPing',
+                        defaultVal: Settings.webSocketPing.toString(),
+                        keyboardType: TextInputType.numberWithOptions(
+                          decimal: false,
+                          signed: false,
+                        ),
+                        validator: (string) {
+                          int inputVal = int.tryParse(string);
+                          if (inputVal == null ||
+                              inputVal < 10 ||
+                              inputVal > 5000) {
+                            return 'Inserire un valore fra 10 e 5000';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                    title: 'Ping',
+                    onlySaveOnSubmit: true,
+                    submitText: 'Ok',
+                    cancelText: 'Cancel',
+                    onCancel: () {
+                      String previousVal = Settings.webSocketPing.toString();
+                      PrefService.setString('webSocketPing', previousVal);
+                    },
+                  ),
+                ),
+                PreferenceDialogLink(
+                  'Pong timeout in millisecondi',
+                  desc: Settings.webSocketPongTimeout.toString(),
+                  onPop: () {
+                    int inputVal =
+                        int.tryParse(PrefService.getString('webSocketPongTimeout'));
+                    if (inputVal != null && Settings.webSocketPongTimeout != inputVal) {
+                      Settings.websocketChanged = true;
+                      Settings.webSocketPongTimeout = inputVal;
+                      _saveSettings();
+                    }
+                  },
+                  barrierDismissible: false,
+                  dialog: PreferenceDialog(
+                    [
+                      TextFieldPreference(
+                        'Pong timeout in millisecondi',
+                        'webSocketPongTimeout',
+                        defaultVal: Settings.webSocketPongTimeout.toString(),
+                        keyboardType: TextInputType.numberWithOptions(
+                          decimal: false,
+                          signed: false,
+                        ),
+                        validator: (string) {
+                          int inputVal = int.tryParse(string);
+                          if (inputVal == null ||
+                              inputVal < 10 ||
+                              inputVal > 5000) {
+                            return 'Inserire un valore fra 10 e 5000';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                    title: 'Pong timeout',
+                    onlySaveOnSubmit: true,
+                    submitText: 'Ok',
+                    cancelText: 'Cancel',
+                    onCancel: () {
+                      String previousVal = Settings.webSocketPongTimeout.toString();
+                      PrefService.setString('webSocketPongTimeout', previousVal);
+                    },
+                  ),
+                ),
+               PreferenceDialogLink(
+                  'Numero di Timeout (poi si diconnette)',
+                  desc: Settings.webSocketTimeoutsBeforeDisconnet.toString(),
+                  onPop: () {
+                    int inputVal =
+                        int.tryParse(PrefService.getString('webSocketTimeoutsBeforeDisconnet'));
+                    if (inputVal != null && Settings.webSocketTimeoutsBeforeDisconnet != inputVal) {
+                      Settings.websocketChanged = true;
+                      Settings.webSocketTimeoutsBeforeDisconnet = inputVal;
+                      _saveSettings();
+                    }
+                  },
+                  barrierDismissible: false,
+                  dialog: PreferenceDialog(
+                    [
+                      TextFieldPreference(
+                        'Numero di Timeout (poi si diconnette)',
+                        'webSocketTimeoutsBeforeDisconnet',
+                        defaultVal: Settings.webSocketTimeoutsBeforeDisconnet.toString(),
+                        keyboardType: TextInputType.numberWithOptions(
+                          decimal: false,
+                          signed: false,
+                        ),
+                        validator: (string) {
+                          int inputVal = int.tryParse(string);
+                          if (inputVal == null ||
+                              inputVal <= 0 ||
+                              inputVal > 20) {
+                            return 'Inserire un valore fra 0 (non si disconnette mai) e 20';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                    title: 'Numero timeout',
+                    onlySaveOnSubmit: true,
+                    submitText: 'Ok',
+                    cancelText: 'Cancel',
+                    onCancel: () {
+                      String previousVal = Settings.webSocketTimeoutsBeforeDisconnet.toString();
+                      PrefService.setString('webSocketTimeoutsBeforeDisconnet', previousVal);
+                    },
+                  ),
+                ),
+                /*******************************************************************/
+                PreferenceTitle('WiFi'),
                 PreferenceDialogLink(
                   'WiFi SSID',
                   desc: Settings.wifiSSID,
@@ -271,43 +445,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onCancel: () {
                       String previousVal = Settings.wifiPassword;
                       PrefService.setString('wifiPassword', previousVal);
-                    },
-                  ),
-                ),
-                PreferenceDialogLink(
-                  'Indirizzo Server WebSocket',
-                  desc: Settings.webSocketIp,
-                  onPop: () {
-                    String inputVal = PrefService.getString('webSocketIp');
-                    if (inputVal != null && Settings.webSocketIp != inputVal) {
-                      Settings.webSocketIp = inputVal;
-                      _saveSettings();
-                    }
-                  },
-                  barrierDismissible: false,
-                  dialog: PreferenceDialog(
-                    [
-                      TextFieldPreference(
-                        'Indirizzo IP',
-                        'webSocketIp',
-                        defaultVal: Settings.webSocketIp,
-                        keyboardType: TextInputType.numberWithOptions(
-                          decimal: false,
-                          signed: false,
-                        ),
-                        validator: (string) {
-                          RegExp regex = RegExp(r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$');
-                          return regex.hasMatch(string) ? null : 'Indirizzo IPv4. Es: 192.168.4.1';
-                        }
-                      ),
-                    ],
-                    title: 'Indirizzo Server WebSocket',
-                    onlySaveOnSubmit: true,
-                    submitText: 'Ok',
-                    cancelText: 'Cancel',
-                    onCancel: () {
-                      String previousVal = Settings.webSocketIp;
-                      PrefService.setString('webSocketServer', previousVal);
                     },
                   ),
                 ),

@@ -190,7 +190,7 @@ class _MyHomePageState extends State<MyHomePage> {
         serverAddress: Settings.webSocketIp,
         serverPort: Settings.webSocketPort,
         timeout: Duration(seconds: 5),
-        pingInterval: Duration(milliseconds: Settings.connectionPing),
+        pingInterval: Duration(milliseconds: Settings.clientPing),
         listener: _onMessageReceived);
     webSocket.isOn.stream.listen((isConnected) {
       isConnected ? _onSocketConnectionSuccess() : _onSocketConnectionClosed();
@@ -398,9 +398,15 @@ class _MyHomePageState extends State<MyHomePage> {
     print('Settings changed');
     _setStatusTimer();
     if (_isSocketConnected) {
-      int arduinoTimeout =
-          Settings.arduinoTimeoutEnabled ? Settings.arduinoTimeout : 0;
-      webSocket.send('#setTimeout;$arduinoTimeout;');
+      if (Settings.timeoutChanged) {
+        int arduinoTimeout = Settings.arduinoTimeoutEnabled ? Settings.arduinoTimeout : 0;
+        webSocket.send('#setTimeout;$arduinoTimeout;');
+        Settings.timeoutChanged = false;
+      }
+      if (Settings.websocketChanged) {
+        webSocket.send('#setWebSocket;${Settings.webSocketPing};${Settings.webSocketPongTimeout};${Settings.webSocketTimeoutsBeforeDisconnet};');
+        Settings.websocketChanged = false;
+      }
     }
   }
 

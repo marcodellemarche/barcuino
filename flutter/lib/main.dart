@@ -129,11 +129,16 @@ class _MyHomePageState extends State<MyHomePage> {
 
           break;
         case ConfirmAction.cancel:
-          Utils.asyncAlert(
-            context: context,
-            title: 'Fanculo!',
-            message: 'Fa n\'po\' come cazzo te pare...',
+          Utils.snackBarMessage(
+            snackBarContent: 'Fa n\'po\' come cazzo te pare...',
+            scaffoldKey: _mainPageScaffoldKey,
+            removeCurrentSnackBar: true,
           );
+          // Utils.asyncAlert(
+          //   context: context,
+          //   title: 'Fanculo!',
+          //   message: 'Fa n\'po\' come cazzo te pare...',
+          // );
           break;
         default:
       }
@@ -205,8 +210,7 @@ class _MyHomePageState extends State<MyHomePage> {
       }
 
       return result;
-    }
-    else {
+    } else {
       print('wifi not connected');
     }
   }
@@ -302,7 +306,10 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     if (snackBarContent != null) {
-      Utils.snackBarMessage(snackBarContent: snackBarContent, scaffoldKey: _mainPageScaffoldKey, removeCurrentSnackBar: true);
+      Utils.snackBarMessage(
+          snackBarContent: snackBarContent,
+          scaffoldKey: _mainPageScaffoldKey,
+          removeCurrentSnackBar: true);
     }
   }
 
@@ -324,11 +331,17 @@ class _MyHomePageState extends State<MyHomePage> {
         _switchOnLed();
     } else {
       // alert
-      Utils.asyncAlert(
-        context: context,
-        title: 'Errore',
-        message: 'Socket non connesso!',
+      Utils.snackBarMessage(
+        snackBarContent: 'Socket non connesso',
+        scaffoldKey: _mainPageScaffoldKey,
+        backgroundColor: Colors.red,
+        removeCurrentSnackBar: true,
       );
+      // Utils.asyncAlert(
+      //   context: context,
+      //   title: 'Errore',
+      //   message: 'Socket non connesso!',
+      // );
       print('Socket not connected');
     }
   }
@@ -402,11 +415,17 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     } else {
       // alert
-      Utils.asyncAlert(
-        context: context,
-        title: 'Errore',
-        message: 'Socket non connesso!',
+      Utils.snackBarMessage(
+        snackBarContent: 'Socket non connesso',
+        scaffoldKey: _mainPageScaffoldKey,
+        backgroundColor: Colors.red,
+        removeCurrentSnackBar: true,
       );
+      // Utils.asyncAlert(
+      //   context: context,
+      //   title: 'Errore',
+      //   message: 'Socket non connesso!',
+      // );
       print('Socket not connected');
     }
   }

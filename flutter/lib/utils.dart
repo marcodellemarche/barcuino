@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:wifi_configuration/wifi_configuration.dart';
 
-
 enum ConfirmAction { cancel, accept }
 
 class ButtonPressed {
@@ -14,6 +13,35 @@ class ButtonPressed {
 class Utils {
   static bool isWiFiConnected = false;
   static bool isWiFiConnecting = false;
+
+  static removeCurrentSnackBar(scaffoldKey) {
+    scaffoldKey.currentState.removeCurrentSnackBar();
+  }
+
+  static snackBarMessage({
+    @required String snackBarContent,
+    @required GlobalKey<ScaffoldState> scaffoldKey,
+    Color backgroundColor,
+    bool removeCurrentSnackBar = false
+  }) {
+    if (removeCurrentSnackBar)
+      scaffoldKey.currentState.removeCurrentSnackBar();
+
+    if (snackBarContent != null) {
+      SnackBar snackBar = SnackBar(
+        content: Text(snackBarContent),
+        duration: Duration(seconds: 1),
+        backgroundColor: backgroundColor != null ? backgroundColor : null,
+        action: SnackBarAction(
+          label: 'Close',
+          onPressed: () {
+            scaffoldKey.currentState.removeCurrentSnackBar();
+          },
+        ),
+      );
+      scaffoldKey.currentState.showSnackBar(snackBar);
+    }
+  }
 
   // Alert async, with title, message and Ok button.
   // Can be closed by user clicking anywhere
@@ -78,11 +106,12 @@ class Utils {
     );
   }
 
-  static Future<WifiConnectionStatus> connect(String ssid, String password) async {
+  static Future<WifiConnectionStatus> connect(
+      String ssid, String password) async {
     WifiConnectionStatus connectionStatus = WifiConnectionStatus.notConnected;
     bool isConnectedBool = false;
     print('Utils: connect method called.');
-      
+
     //to get status if device connected to some wifi
     isConnectedBool = await WifiConfiguration.isConnectedToWifi(ssid);
 

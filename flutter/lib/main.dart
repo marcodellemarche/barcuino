@@ -302,17 +302,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     if (snackBarContent != null) {
-      SnackBar snackBar = SnackBar(
-        content: Text(snackBarContent),
-        duration: Duration(seconds: 1),
-        action: SnackBarAction(
-          label: 'Close',
-          onPressed: () {
-            _mainPageScaffoldKey.currentState.removeCurrentSnackBar();
-          },
-        ),
-      );
-      _mainPageScaffoldKey.currentState.showSnackBar(snackBar);
+      Utils.snackBarMessage(snackBarContent: snackBarContent, scaffoldKey: _mainPageScaffoldKey, removeCurrentSnackBar: true);
     }
   }
 
@@ -449,7 +439,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void sendMessage(String message, {bool hideSnackBar = false}) {
-    if (hideSnackBar) _mainPageScaffoldKey.currentState.removeCurrentSnackBar();
+    if (hideSnackBar) Utils.removeCurrentSnackBar(_mainPageScaffoldKey);
     if (!message.endsWith('\n')) message += '\n';
     webSocket.send(message);
   }

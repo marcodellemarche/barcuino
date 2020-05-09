@@ -2,6 +2,8 @@ import 'package:barkino/models/settings.dart';
 import 'package:flutter/material.dart';
 import 'package:preferences/preferences.dart';
 
+import '../utils.dart';
+
 class SettingsScreen extends StatefulWidget {
   final Function onSettingChanged;
 
@@ -13,11 +15,16 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   Future<bool> _dataLoaded;
+  final _settingsScreenScaffoldKey = GlobalKey<ScaffoldState>();
 
   Future<bool> _saveSettings() async {
     bool result = await Settings.saveSettings();
     setState(() {});
     print('Saved');
+    Utils.snackBarMessage(
+        snackBarContent: 'Saved',
+        scaffoldKey: _settingsScreenScaffoldKey,
+        removeCurrentSnackBar: true);
     if (widget.onSettingChanged != null) widget.onSettingChanged();
     return result;
   }
@@ -31,6 +38,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _settingsScreenScaffoldKey,
       appBar: AppBar(
         title: Text("Settings"),
       ),
@@ -56,8 +64,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onChange: () {
                     Settings.statusTimerEnabled =
                         PrefService.getBool('statusTimerEnabled');
-                    print(
-                        'statusTimerEnabled ' + Settings.statusTimerEnabled.toString());
+                    print('statusTimerEnabled ' +
+                        Settings.statusTimerEnabled.toString());
                     _saveSettings();
                   },
                 ),
@@ -127,7 +135,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onPop: () {
                     int inputVal =
                         int.tryParse(PrefService.getString('arduinoTimeout'));
-                    if (inputVal != null && Settings.arduinoTimeout != inputVal) {
+                    if (inputVal != null &&
+                        Settings.arduinoTimeout != inputVal) {
                       Settings.timeoutChanged = true;
                       Settings.arduinoTimeout = inputVal;
                       _saveSettings();
@@ -224,19 +233,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   barrierDismissible: false,
                   dialog: PreferenceDialog(
                     [
-                      TextFieldPreference(
-                        'Indirizzo IP',
-                        'webSocketIp',
-                        defaultVal: Settings.webSocketIp,
-                        keyboardType: TextInputType.numberWithOptions(
-                          decimal: false,
-                          signed: false,
-                        ),
-                        validator: (string) {
-                          RegExp regex = RegExp(r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$');
-                          return regex.hasMatch(string) ? null : 'Indirizzo IPv4. Es: 192.168.4.1';
-                        }
-                      ),
+                      TextFieldPreference('Indirizzo IP', 'webSocketIp',
+                          defaultVal: Settings.webSocketIp,
+                          keyboardType: TextInputType.numberWithOptions(
+                            decimal: false,
+                            signed: false,
+                          ), validator: (string) {
+                        RegExp regex = RegExp(
+                            r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$');
+                        return regex.hasMatch(string)
+                            ? null
+                            : 'Indirizzo IPv4. Es: 192.168.4.1';
+                      }),
                     ],
                     title: 'Indirizzo Server WebSocket',
                     onlySaveOnSubmit: true,
@@ -256,7 +264,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onPop: () {
                     int inputVal =
                         int.tryParse(PrefService.getString('webSocketPing'));
-                    if (inputVal != null && Settings.webSocketPing != inputVal) {
+                    if (inputVal != null &&
+                        Settings.webSocketPing != inputVal) {
                       Settings.websocketChanged = true;
                       Settings.webSocketPing = inputVal;
                       _saveSettings();
@@ -298,9 +307,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   'Pong timeout in millisecondi',
                   desc: Settings.webSocketPongTimeout.toString(),
                   onPop: () {
-                    int inputVal =
-                        int.tryParse(PrefService.getString('webSocketPongTimeout'));
-                    if (inputVal != null && Settings.webSocketPongTimeout != inputVal) {
+                    int inputVal = int.tryParse(
+                        PrefService.getString('webSocketPongTimeout'));
+                    if (inputVal != null &&
+                        Settings.webSocketPongTimeout != inputVal) {
                       Settings.websocketChanged = true;
                       Settings.webSocketPongTimeout = inputVal;
                       _saveSettings();
@@ -333,18 +343,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     submitText: 'Ok',
                     cancelText: 'Cancel',
                     onCancel: () {
-                      String previousVal = Settings.webSocketPongTimeout.toString();
-                      PrefService.setString('webSocketPongTimeout', previousVal);
+                      String previousVal =
+                          Settings.webSocketPongTimeout.toString();
+                      PrefService.setString(
+                          'webSocketPongTimeout', previousVal);
                     },
                   ),
                 ),
-               PreferenceDialogLink(
+                PreferenceDialogLink(
                   'Numero di Timeout (poi si diconnette)',
                   desc: Settings.webSocketTimeoutsBeforeDisconnet.toString(),
                   onPop: () {
-                    int inputVal =
-                        int.tryParse(PrefService.getString('webSocketTimeoutsBeforeDisconnet'));
-                    if (inputVal != null && Settings.webSocketTimeoutsBeforeDisconnet != inputVal) {
+                    int inputVal = int.tryParse(PrefService.getString(
+                        'webSocketTimeoutsBeforeDisconnet'));
+                    if (inputVal != null &&
+                        Settings.webSocketTimeoutsBeforeDisconnet != inputVal) {
                       Settings.websocketChanged = true;
                       Settings.webSocketTimeoutsBeforeDisconnet = inputVal;
                       _saveSettings();
@@ -356,7 +369,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       TextFieldPreference(
                         'Numero di Timeout (poi si diconnette)',
                         'webSocketTimeoutsBeforeDisconnet',
-                        defaultVal: Settings.webSocketTimeoutsBeforeDisconnet.toString(),
+                        defaultVal: Settings.webSocketTimeoutsBeforeDisconnet
+                            .toString(),
                         keyboardType: TextInputType.numberWithOptions(
                           decimal: false,
                           signed: false,
@@ -377,8 +391,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     submitText: 'Ok',
                     cancelText: 'Cancel',
                     onCancel: () {
-                      String previousVal = Settings.webSocketTimeoutsBeforeDisconnet.toString();
-                      PrefService.setString('webSocketTimeoutsBeforeDisconnet', previousVal);
+                      String previousVal =
+                          Settings.webSocketTimeoutsBeforeDisconnet.toString();
+                      PrefService.setString(
+                          'webSocketTimeoutsBeforeDisconnet', previousVal);
                     },
                   ),
                 ),
@@ -421,7 +437,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 PreferenceDialogLink(
                   'WiFi Password',
-                  desc: Settings.wifiPassword.isEmpty ? 'Non utilizzata' : '********',
+                  desc: Settings.wifiPassword.isEmpty
+                      ? 'Non utilizzata'
+                      : '********',
                   onPop: () {
                     String inputVal = PrefService.getString('wifiPassword');
                     if (inputVal != null && Settings.wifiPassword != inputVal) {

@@ -1,2 +1,6 @@
 .vscode/c_cpp_properties.json
 python/__pycache__
+arduino/d1_mini_8266/.vscode/c_cpp_properties.json
+arduino/d1_mini_8266/.vscode/launch.json
+arduino/wemos_d1_mini32/.vscode/c_cpp_properties.json
+arduino/wemos_d1_mini32/.vscode/launch.json

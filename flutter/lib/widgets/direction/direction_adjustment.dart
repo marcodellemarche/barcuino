@@ -8,26 +8,40 @@ class DirectionAdjustment extends StatefulWidget {
   final FlutterSliderTooltipDirection toolTipDirection;
   final double startValue;
   final double height;
+  final bool disabled;
 
-  DirectionAdjustment({this.startValue, this.onAdjustmentDone, this.height, this.toolTipDirection});
+  DirectionAdjustment(
+      {this.startValue,
+      this.onAdjustmentDone,
+      this.height,
+      this.toolTipDirection,
+      this.disabled});
 
   @override
   _DirectionAdjustmentState createState() => _DirectionAdjustmentState();
 }
 
 class _DirectionAdjustmentState extends State<DirectionAdjustment> {
+  
+  @override
+  void didUpdateWidget(Widget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
       height: widget.height,
       alignment: AlignmentDirectional.center,
       child: FlutterSlider(
+        disabled: widget.disabled,
         rangeSlider: false,
         min: 0,
         max: 100,
         axis: Axis.vertical,
         rtl: true,
         values: [widget.startValue * 100],
+        step: 1,
         handlerWidth: 20,
         tooltip: FlutterSliderTooltip(
           direction: widget.toolTipDirection,
@@ -79,10 +93,14 @@ class _DirectionAdjustmentState extends State<DirectionAdjustment> {
           activeTrackBarHeight: 2,
         ),
         handler: FlutterSliderHandler(
-          disabled: true,
+          //disabled: true,
           child: Container(),
           decoration: BoxDecoration(
-              color: Theme.of(context).accentColor, shape: BoxShape.circle),
+            color: widget.disabled
+                ? Colors.grey
+                : Theme.of(context).accentColor,
+            shape: BoxShape.circle,
+          ),
         ),
         onDragCompleted: (handlerIndex, newValue, _) {
           double valueNormalized =

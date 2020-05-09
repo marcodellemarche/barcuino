@@ -9,8 +9,8 @@
                 "c:/Users/federico.ferretti/Documents/Arduino-Projects/barcuino/arduino/d1_mini_8266/include",
                 "c:/Users/federico.ferretti/Documents/Arduino-Projects/barcuino/arduino/d1_mini_8266/src",
                 "C:/Users/federico.ferretti/.platformio/packages/framework-arduinoespressif8266/libraries/Servo/src",
-                "c:/Users/federico.ferretti/Documents/Arduino-Projects/barcuino/arduino/d1_mini_8266/lib/LedController",
                 "C:/Users/federico.ferretti/.platformio/packages/framework-arduinoespressif8266/libraries/ESP8266WebServer/src",
+                "c:/Users/federico.ferretti/Documents/Arduino-Projects/barcuino/arduino/d1_mini_8266/lib/AnalogController",
                 "c:/Users/federico.ferretti/Documents/Arduino-Projects/barcuino/arduino/d1_mini_8266/.pio/libdeps/d1_mini/DallasTemperature_ID54",
                 "c:/Users/federico.ferretti/Documents/Arduino-Projects/barcuino/arduino/d1_mini_8266/.pio/libdeps/d1_mini/OneWire_ID1",
                 "c:/Users/federico.ferretti/Documents/Arduino-Projects/barcuino/arduino/d1_mini_8266/.pio/libdeps/d1_mini/WebSockets_ID549/src",
@@ -56,8 +56,8 @@
                     "c:/Users/federico.ferretti/Documents/Arduino-Projects/barcuino/arduino/d1_mini_8266/include",
                     "c:/Users/federico.ferretti/Documents/Arduino-Projects/barcuino/arduino/d1_mini_8266/src",
                     "C:/Users/federico.ferretti/.platformio/packages/framework-arduinoespressif8266/libraries/Servo/src",
-                    "c:/Users/federico.ferretti/Documents/Arduino-Projects/barcuino/arduino/d1_mini_8266/lib/LedController",
                     "C:/Users/federico.ferretti/.platformio/packages/framework-arduinoespressif8266/libraries/ESP8266WebServer/src",
+                    "c:/Users/federico.ferretti/Documents/Arduino-Projects/barcuino/arduino/d1_mini_8266/lib/AnalogController",
                     "c:/Users/federico.ferretti/Documents/Arduino-Projects/barcuino/arduino/d1_mini_8266/.pio/libdeps/d1_mini/DallasTemperature_ID54",
                     "c:/Users/federico.ferretti/Documents/Arduino-Projects/barcuino/arduino/d1_mini_8266/.pio/libdeps/d1_mini/OneWire_ID1",
                     "c:/Users/federico.ferretti/Documents/Arduino-Projects/barcuino/arduino/d1_mini_8266/.pio/libdeps/d1_mini/WebSockets_ID549/src",
@@ -99,7 +99,7 @@
                 ]
             },
             "defines": [
-                "PLATFORMIO=40301",
+                "PLATFORMIO=40303",
                 "ESP8266",
                 "ARDUINO_ARCH_ESP8266",
                 "ARDUINO_ESP8266_WEMOS_D1MINI",

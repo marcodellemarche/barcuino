@@ -120,7 +120,7 @@ packages:
       name: flutter_xlider
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "3.3.0"
+    version: "3.3.1"
   gateway:
     dependency: "direct main"
     description:
@@ -177,6 +177,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.0.2"
+  preferences:
+    dependency: "direct main"
+    description:
+      path: "lib\\packages\\preferences"
+      relative: true
+    source: path
+    version: "5.2.0"
   quiver:
     dependency: transitive
     description:

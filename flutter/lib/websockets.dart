@@ -48,7 +48,7 @@ class WebSocketsNotifications {
   /// List of methods to be called when a new message
   /// comes in.
   ///
-  ObserverList<Function> _listeners = new ObserverList<Function>();
+  ObserverList<Function> _listeners;
 
   /// ----------------------------------------------------------
   /// Initialization the WebSockets connection with the server
@@ -74,8 +74,11 @@ class WebSocketsNotifications {
         .then((webSocket) {
       try {
         if (webSocket != null) {
-          webSocket.pingInterval = pingInterval;
+          if (pingInterval != null) {
+            webSocket.pingInterval = pingInterval;
+          }
           _channel = new IOWebSocketChannel(webSocket);
+          _listeners = new ObserverList<Function>();
 
           addListener(listener);
 
@@ -123,6 +126,7 @@ class WebSocketsNotifications {
         isOn.add(_isOn);
       }
     }
+    _listeners = null;
   }
 
   /// ---------------------------------------------------------
@@ -160,6 +164,7 @@ class WebSocketsNotifications {
   /// ----------------------------------------------------------
   _onReceptionOfMessageFromServer(message) {
     _listeners.forEach((Function callback) {
+      print('Mario');
       callback(message);
     });
   }

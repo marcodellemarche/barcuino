@@ -15,10 +15,12 @@ public:
     void off();
     void setIntensity(int intensity); // set intensity to the one desired
     bool isOn;
+    int intensity; // get intensity
 private:
     bool    _attached;
     uint8_t _pin;
     uint8_t _channel;
     AnalogType _type;
     uint32_t _maxValue;
+    void analogControllerWrite(uint32_t value);
 };

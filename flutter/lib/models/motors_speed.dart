@@ -9,23 +9,39 @@ class MotorsSpeed {
   static int _left = 0;
   static int _right = 0;
 
+  static bool _adjustmentEnabled = true;
+
   // 0.0 to 1.0
   static double leftAdjustment = 1;
   static double rightAdjustment = 1;
 
   static int getLeft() {
-    int result = (MotorsSpeed.leftAdjustment * _left).floor();
+    int result;
+    if (_adjustmentEnabled)    
+      // left direction adjstment controls right motor and viceversa
+      result = (MotorsSpeed.rightAdjustment * _left).floor();
+    else
+      result = _left;
     return result != null && result > minSpeed ? result : 0;
   }
 
   static int getRight() {
-    int result = (MotorsSpeed.rightAdjustment * _right).floor();
+    int result;
+    if (_adjustmentEnabled)
+      // left direction adjstment controls right motor and viceversa
+      result = (MotorsSpeed.leftAdjustment * _right).floor();
+    else
+      result = _right;
     return result != null && result > minSpeed ? result : 0;
   }
 
-  static void setMotorsSpeed({int left, int right}) {
+  static void setMotorsSpeed({int left, int right, bool includeAdjustments = false,}) 
+  {
     if (left != null) _left = left;
+
     if (right != null) _right = right;
+
+    _adjustmentEnabled = includeAdjustments;
   }
 
   static void setMotorsSpeedFromPad(double degrees, double distance) {
@@ -45,24 +61,24 @@ class MotorsSpeed {
     int left = (leftSpeed * distance).round();
     int right = (rightSpeed * distance).round();
 
-    setMotorsSpeed(left: left, right: right);
+    setMotorsSpeed(left: left, right: right, includeAdjustments: true);
   }
 
   static void setAdjstment({double left, double right}) {
+    // left direction adjstment controls right motor and viceversa
     if (left != null) MotorsSpeed.leftAdjustment = left;
     if (right != null) MotorsSpeed.rightAdjustment = right;
   }
 
   static Future<bool> saveToSettings() async {
     try {
-      Settings settings = Settings();
-      await settings
+      await Settings
           .setByKey('leftAdjustment', leftAdjustment)
           .then((bool result) {
         print('leftAdjustment saved $leftAdjustment. result $result');
         return result;
       });
-      await settings
+      await Settings
           .setByKey('rightAdjustment', rightAdjustment)
           .then((bool result) {
         print('rightAdjustment saved $rightAdjustment. result $result');
@@ -75,13 +91,13 @@ class MotorsSpeed {
   }
 
   static Future<bool> getFromSettings() async {
-    Settings settings = Settings();
-    leftAdjustment = await settings.getByKey('leftAdjustment') ?? 1;
+    leftAdjustment = await Settings.getByKey('leftAdjustment') ?? 1;
     print('leftAdjustment $leftAdjustment');
 
-    rightAdjustment = await settings.getByKey('rightAdjustment') ?? 1;
+    rightAdjustment = await Settings.getByKey('rightAdjustment') ?? 1;
     print('rightAdjustment $rightAdjustment');
 
     return true;
   }
+  
 }

@@ -65,8 +65,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Timer _statusTimer;
   Timer _autoReconnectTimer;
-  Timer _healthCheckTimer;
 
+  bool _listenForConnectivityChanged = false;
   StreamSubscription _onWifiChanged;
   Future<bool> _dataLoaded;
 
@@ -152,6 +152,7 @@ class _MyHomePageState extends State<MyHomePage> {
         switch (wifiState) {
           case WifiState.success:
           case WifiState.already:
+            _listenForConnectivityChanged = true;
             print('WiFi state: $wifiState');
 
             // Now check for mobile network connection
@@ -163,10 +164,12 @@ class _MyHomePageState extends State<MyHomePage> {
             Future.delayed(Duration(seconds: 1), _startAutoReconnectSocket);
             break;
           case WifiState.error:
+            _listenForConnectivityChanged = false;
             setState(() => Utils.isWiFiConnected = false);
             print('Error connection WiFi. State: $wifiState');
             break;
           default:
+            _listenForConnectivityChanged = false;
             setState(() => Utils.isWiFiConnected = false);
             print('Error connecting');
             break;
@@ -186,21 +189,32 @@ class _MyHomePageState extends State<MyHomePage> {
   //       .catchError((error) => print('Error on get gw'));
   // }
 
-  void _socketConnect() {
-    webSocket.initCommunication(
-        serverAddress: Settings.webSocketIp,
-        serverPort: Settings.webSocketPort,
-        timeout: Duration(seconds: 5),
-        pingInterval: Duration(milliseconds: Settings.clientPing),
-        listener: _onMessageReceived);
-    webSocket.isOn.stream.listen((isConnected) {
-      isConnected ? _onSocketConnectionSuccess() : _onSocketConnectionClosed();
-    });
+  Future<bool> _socketConnect() async {
+    if (Utils.isWiFiConnected) {
+      bool result = await webSocket.initCommunication(
+          serverAddress: Settings.webSocketIp,
+          serverPort: Settings.webSocketPort,
+          pingInterval: Duration(milliseconds: Settings.clientPing),
+          listener: _onMessageReceived);
+
+      if (result) {
+        webSocket.onClose.stream.listen((manualDisconnection) {
+          if (!manualDisconnection) _onSocketConnectionClosed();
+        });
+        _onSocketConnectionSuccess();
+      }
+
+      return result;
+    }
+    else {
+      print('wifi not connected');
+    }
   }
 
   void _onSocketConnectionSuccess() {
     if (!_isSocketConnected) {
-      //webSocket.addListener(_onMessageReceived);
+      _isSocketConnected = true;
+      print('_onSocketConnectionSuccess');
       setState(() => _isSocketConnected = true);
       _stopAutoReconnectSocket();
       _setStatusTimer();
@@ -213,7 +227,6 @@ class _MyHomePageState extends State<MyHomePage> {
       _statusTimer = new Timer.periodic(
           Duration(milliseconds: Settings.statusTimer), (timer) {
         if (_isSocketConnected) {
-          //sendMessage('#healthcheck;');
           _getStatus();
         }
       });
@@ -221,9 +234,10 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _onSocketConnectionClosed() {
+    if (_statusTimer != null) _statusTimer.cancel();
+
     if (_isSocketConnected) {
       setState(() => _isSocketConnected = false);
-      _socketDisconnect();
       if (!_isManuallyDisconnected && Settings.autoReconnectSocketEnabled) {
         _startAutoReconnectSocket();
       }
@@ -231,9 +245,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _socketDisconnect() {
-    webSocket.removeListener(_onMessageReceived);
     webSocket.reset();
-    if (_healthCheckTimer != null) _healthCheckTimer.cancel();
     if (_statusTimer != null) _statusTimer.cancel();
   }
 
@@ -411,7 +423,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _onDirectionChanged() {
     if (_isSocketConnected) {
-      sendMessage('#setMotorsSpeed;${MotorsSpeed.getLeft()};${MotorsSpeed.getRight()};', hideSnackBar: true);
+      sendMessage(
+          '#setMotorsSpeed;${MotorsSpeed.getLeft()};${MotorsSpeed.getRight()};',
+          hideSnackBar: true);
     }
   }
 
@@ -420,12 +434,15 @@ class _MyHomePageState extends State<MyHomePage> {
     _setStatusTimer();
     if (_isSocketConnected) {
       if (Settings.timeoutChanged) {
-        int arduinoTimeout = Settings.arduinoTimeoutEnabled ? Settings.arduinoTimeout : 0;
+        int arduinoTimeout =
+            Settings.arduinoTimeoutEnabled ? Settings.arduinoTimeout : 0;
         sendMessage('#setTimeout;$arduinoTimeout;', hideSnackBar: true);
         Settings.timeoutChanged = false;
       }
       if (Settings.websocketChanged) {
-        sendMessage('#setWebSocket;${Settings.webSocketPing};${Settings.webSocketPongTimeout};${Settings.webSocketTimeoutsBeforeDisconnet};', hideSnackBar: true);
+        sendMessage(
+            '#setWebSocket;${Settings.webSocketPing};${Settings.webSocketPongTimeout};${Settings.webSocketTimeoutsBeforeDisconnet};',
+            hideSnackBar: true);
         Settings.websocketChanged = false;
       }
     }
@@ -433,8 +450,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void sendMessage(String message, {bool hideSnackBar = false}) {
     if (hideSnackBar) _mainPageScaffoldKey.currentState.removeCurrentSnackBar();
-    if (!message.endsWith('\n')) 
-      message += '\n';
+    if (!message.endsWith('\n')) message += '\n';
     webSocket.send(message);
   }
 
@@ -442,6 +458,15 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       logMessages.clear();
     });
+  }
+
+  void _onConnectivityChanged(ConnectivityResult result) {
+    if (_listenForConnectivityChanged) {
+      logMessages.add(result.toString());
+
+      Utils.isWiFiConnected = result == ConnectivityResult.wifi ? true : false;
+      setState(() {});
+    }
   }
 
   @override
@@ -452,7 +477,7 @@ class _MyHomePageState extends State<MyHomePage> {
     _onWifiChanged = Connectivity()
         .onConnectivityChanged
         .listen((ConnectivityResult result) {
-      print(result);
+      _onConnectivityChanged(result);
     });
   }
 

@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:web_socket_channel/io.dart';
@@ -22,14 +21,6 @@ import 'package:web_socket_channel/io.dart';
 // const String _SERVER_ADDRESS = "ws://$_SERVER_IP:$_SERVER_PORT";
 
 class WebSocketsNotifications {
-  static final WebSocketsNotifications _sockets =
-      new WebSocketsNotifications._internal();
-
-  factory WebSocketsNotifications() {
-    return _sockets;
-  }
-
-  WebSocketsNotifications._internal();
 
   ///
   /// The WebSocket "open" channel
@@ -39,9 +30,9 @@ class WebSocketsNotifications {
   ///
   /// Is the connection established?
   ///
-  bool _isOn = false;
-  final BehaviorSubject isOn = BehaviorSubject<bool>();
-  bool get isConnected => _channel?.closeReason == null;
+  bool _isConnected = false;
+  final BehaviorSubject onClose = BehaviorSubject<bool>();
+  bool manualDisconnection = false;
 
   ///
   /// Listeners
@@ -53,77 +44,106 @@ class WebSocketsNotifications {
   /// ----------------------------------------------------------
   /// Initialization the WebSockets connection with the server
   /// ----------------------------------------------------------
-  initCommunication({
+  Future<bool> initCommunication({
     String serverAddress,
     int serverPort,
-    Duration timeout,
     Duration pingInterval,
     Function listener,
   }) async {
-    ///
-    /// Just in case, close any previous communication
-    ///
-    reset();
+    // Just in case, close any previous communication
+    try {
+      await reset();
 
-    ///
-    /// Open a new WebSocket communication
-    ///
+      WebSocket webSocket = await WebSocket.connect('ws://$serverAddress:$serverPort');
+      
+      // useless code to fix intellisense error on WebSocket.connect
+      if (false) webSocket.close();
 
-    WebSocket.connect('ws://$serverAddress:$serverPort')
-        .timeout(timeout, onTimeout: () => null)
-        .then((webSocket) {
-      try {
-        if (webSocket != null) {
-          if (pingInterval != null) {
-            webSocket.pingInterval = pingInterval;
-          }
-          _channel = new IOWebSocketChannel(webSocket);
-          _listeners = new ObserverList<Function>();
-
-          addListener(listener);
-
-          _isOn = true;
-          isOn.add(_isOn);
-
-          _channel.stream.listen(
-            (message) => _onReceptionOfMessageFromServer(message),
-            onError: (error) {
-              print('onError');
-              _isOn = false;
-              isOn.add(_isOn);
-            },
-            onDone: () {
-              print('onDone');
-              _isOn = false;
-              isOn.add(_isOn);
-            },
-          );
-        } else {
-          print('timpeout on WebSocket.connect');
-        }
-      } catch (e) {
-        print(
-            'Error happened when opening a new websocket connection. ${e.toString()}');
-        _isOn = false;
-        isOn.add(_isOn);
+      if (pingInterval != null) {
+        webSocket.pingInterval = pingInterval;
       }
-    }).catchError((error) {
-      _isOn = false;
-      isOn.add(_isOn);
-      print(error);
-      return;
-    });
+
+      _channel = new IOWebSocketChannel(webSocket);
+      _listeners = new ObserverList<Function>();
+      addListener(listener);
+
+      _isConnected = true;
+
+      _channel.stream.listen(
+        (message) => _onReceptionOfMessageFromServer(message),
+        onError: (error) {
+          print('onError');
+          manualDisconnection = false;
+          onClose.add(manualDisconnection);
+        },
+        onDone: () {
+          print('onDone');
+          manualDisconnection = false;
+          onClose.add(manualDisconnection);
+        },
+      );
+
+      return true;
+    }
+    catch (err) {
+      print(err.toString());
+      return false;
+    }
+    
+
+    // WebSocket.connect('ws://$serverAddress:$serverPort').then((webSocket) {
+    //   try {
+    //     if (webSocket != null) {
+    //       if (pingInterval != null) {
+    //         webSocket.pingInterval = pingInterval;
+    //       }
+    //       _channel = new IOWebSocketChannel(webSocket);
+    //       _listeners = new ObserverList<Function>();
+
+    //       addListener(listener);
+
+    //       _isOn = true;
+    //       isOn.add(_isOn);
+
+    //       _channel.stream.listen(
+    //         (message) => _onReceptionOfMessageFromServer(message),
+    //         onError: (error) {
+    //           print('onError');
+    //           _isOn = false;
+    //           isOn.add(_isOn);
+    //         },
+    //         onDone: () {
+    //           print('onDone');
+    //           _isOn = false;
+    //           isOn.add(_isOn);
+    //         },
+    //       );
+    //     } else {
+    //       print('timpeout on WebSocket.connect');
+    //     }
+    //   } catch (e) {
+    //     print(
+    //         'Error happened when opening a new websocket connection. ${e.toString()}');
+    //     _isOn = false;
+    //     isOn.add(_isOn);
+    //   }
+    // }).catchError((error) {
+    //   _isOn = false;
+    //   isOn.add(_isOn);
+    //   print(error);
+    //   return;
+    // });
   }
 
   /// ----------------------------------------------------------
   /// Closes the WebSocket communication
   /// ----------------------------------------------------------
-  reset() {
+  Future<void> reset() async {
     if (_channel != null) {
       if (_channel.sink != null) {
-        _channel.sink.close();
-        _isOn = false;
-        isOn.add(_isOn);
+        await _channel.sink.close();
+        manualDisconnection = true;
+        onClose.add(manualDisconnection);
       }
     }
     _listeners = null;
@@ -134,7 +154,7 @@ class WebSocketsNotifications {
   /// ---------------------------------------------------------
   send(String message) {
     if (_channel != null) {
-      if (_channel.sink != null && _isOn) {
+      if (_channel.sink != null && _isConnected) {
         //print('Sending message: $message');
         _channel.sink.add(message);
       } else {
@@ -164,7 +184,6 @@ class WebSocketsNotifications {
   /// ----------------------------------------------------------
   _onReceptionOfMessageFromServer(message) {
     _listeners.forEach((Function callback) {
-      print('Mario');
       callback(message);
     });
   }

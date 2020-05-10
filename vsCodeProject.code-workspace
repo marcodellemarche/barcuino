@@ -4,18 +4,13 @@
 			"path": "."
 		},
 		{
-			"name": "wemos_d1_mini32",
-			"path": "arduino/wemos_d1_mini32"
+			"path": "arduino\\bluetooth\\bt_wemos_d1_mini32"
 		},
 		{
-			"name": "d1_mini_8266",
-			"path": "arduino/d1_mini_8266"
+			"path": "arduino\\websocket_server\\ws_wemos_d1_mini32"
 		},
 		{
-			"path": "flutter"
-		},
-		{
-			"path": "python"
+			"path": "arduino\\websocket_server\\ws_d1_mini_8266"
 		}
 	],
 	"settings": {

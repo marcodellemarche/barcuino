@@ -29,7 +29,9 @@ dependencies:
   preferences:
     path: ./lib/packages/preferences
   flutter_xlider: ^3.3.1
-  wifi: ^0.1.5
+  # wifi: ^0.1.5
+  wifi:
+    path: ./lib/packages/wifi
   connectivity: ^0.4.8+2
   wifi_configuration: ^1.2.1
 

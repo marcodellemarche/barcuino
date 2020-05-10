@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:connectivity/connectivity.dart';
+import 'package:flutter/services.dart';
 import 'package:preferences/preference_service.dart';
 import 'package:wifi/wifi.dart';
 import 'package:wifi_configuration/wifi_configuration.dart';
@@ -148,12 +149,12 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> _wifiConnect() async {
     if (!Utils.isWiFiConnecting) {
       Utils.isWiFiConnecting = true;
+      Utils.isWiFiConnected = false;
 
       try {
         WifiState wifiState =
             await Wifi.connection(Settings.wifiSSID, Settings.wifiPassword);
 
-        Utils.isWiFiConnecting = false;
         switch (wifiState) {
           case WifiState.success:
           case WifiState.already:
@@ -163,29 +164,33 @@ class _MyHomePageState extends State<MyHomePage> {
             // Now check for mobile network connection
             await _checkConnectivity();
 
-            setState(() => Utils.isWiFiConnected = true);
+            Utils.isWiFiConnected = true;
 
             // wait 1 second and try to connect socket
             Future.delayed(Duration(seconds: 1), _startAutoReconnectSocket);
             break;
           case WifiState.error:
-            _listenForConnectivityChanged = false;
-            setState(() => Utils.isWiFiConnected = false);
             print('Error connection WiFi. State: $wifiState');
             break;
+          case WifiState.platformException:
+            print('Error connection WiFi. PlatformException: $wifiState');
+            break;
           default:
-            _listenForConnectivityChanged = false;
-            setState(() => Utils.isWiFiConnected = false);
             print('Error connecting');
             break;
         }
-      } catch (err) {
-        setState(() => Utils.isWiFiConnected = false);
+      } on PlatformException catch (err) {
+        print('WiFi PlatformException ${err.toString()}');
+      } on TimeoutException catch (err) {
+        print('WiFi timeout ${err.toString()}');
+      } on Error catch (err) {
         print('WiFi error ${err.toString()}');
       }
-    } else {
-      setState(() => Utils.isWiFiConnected = true);
+
+      Utils.isWiFiConnecting = false;
     }
+
+    setState(() {});
   }
 
   // void _getGw() {
@@ -195,8 +200,9 @@ class _MyHomePageState extends State<MyHomePage> {
   // }
 
   Future<bool> _socketConnect() async {
+    bool result = false;
     if (Utils.isWiFiConnected) {
-      bool result = await webSocket.initCommunication(
+      result = await webSocket.initCommunication(
           serverAddress: Settings.webSocketIp,
           serverPort: Settings.webSocketPort,
           pingInterval: Duration(milliseconds: Settings.clientPing),
@@ -208,11 +214,11 @@ class _MyHomePageState extends State<MyHomePage> {
         });
         _onSocketConnectionSuccess();
       }
-
-      return result;
     } else {
       print('wifi not connected');
     }
+
+    return result;
   }
 
   void _onSocketConnectionSuccess() {

@@ -62,7 +62,7 @@ const char *myPassword = "ciaociao";
 const char *mySsid = "BarkiFi";
 
 long disconnectionCounter = 0;
-long lastWifiClientCounter = 0;
+long lastSocketClientCounter = 0;
 
 // IPAddress local_ip(192,168,1,4);
 // IPAddress gateway(192,168,1,1);
@@ -565,18 +565,23 @@ void loop()
 {
   if (WiFi.softAPgetStationNum() > 0)
   {
-    int connectedWifiClients = webSocket.connectedClients();
-    if (lastWifiClientCounter != connectedWifiClients) {
-      lastWifiClientCounter = connectedWifiClients;
+    webSocket.loop();
+    // server.handleClient();
+
+    int connectedSocketClients = webSocket.connectedClients();
+    
+    if (lastSocketClientCounter != connectedSocketClients) {
+      lastSocketClientCounter = connectedSocketClients;
       disconnectionCounter = 0;
-      if (webSocket.connectedClients() > 0)
+      previousHealtCheck = 0;
+      if (connectedSocketClients > 0)
         ledRgbGreen.on();
       else
         ledRgbGreen.off();
     }
-    webSocket.loop();
-    // server.handleClient();
-    checkHealthCheckTime();
+
+    if (connectedSocketClients > 0)
+      checkHealthCheckTime();
   }
   else
   {

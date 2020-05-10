@@ -297,9 +297,9 @@ packages:
   wifi:
     dependency: "direct main"
     description:
-      name: wifi
-      url: "https://pub.dartlang.org"
-    source: hosted
+      path: "lib\\packages\\wifi"
+      relative: true
+    source: path
     version: "0.1.5"
   wifi_configuration:
     dependency: "direct main"

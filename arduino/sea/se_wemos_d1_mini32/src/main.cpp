@@ -294,8 +294,8 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
       // ea -> Arduino earth
       // bt -> Arduino earth bluetooth
       // fl -> Flutter app
-      String sender = serialData.substring(1, 2);
-      String receiver = serialData.substring(3, 4);
+      String sender = serialData.substring(1, 3);
+      String receiver = serialData.substring(3, 5);
 
       if (receiver == "se")
       {
@@ -433,6 +433,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
           int newHealtCheckTimeout = value.toInt(); // value in millis
           if (newHealtCheckTimeout == 0) {
             isHealtCheckTimeoutEnabled = false;
+            respondToCommand(num, sender);
           }
           else if (newHealtCheckTimeout > 0 && newHealtCheckTimeout <= 25000)
           {
@@ -443,7 +444,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
           else
           {
             // resolution not supported
-            respondToCommand(num, sender, false, "Resolution not supported!");
+            respondToCommand(num, sender, false, "setTimeout millis between 0 a 25000!");
           }
         }
         else if (command == "setWebSocket") {

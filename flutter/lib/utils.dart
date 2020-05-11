@@ -4,10 +4,10 @@ import 'package:wifi_configuration/wifi_configuration.dart';
 enum ConfirmAction { cancel, accept }
 
 class DeviceName {
-  static const EARTH = "ea";
   static const FLUTTER = "fl";
   static const SEA = "se";
-  static const SEA_BT = "bt";
+  static const EARTH = "ea";
+  static const EARTH_BT = "bt";
 }
 
 class ButtonPressed {

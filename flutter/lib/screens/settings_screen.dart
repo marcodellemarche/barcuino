@@ -126,6 +126,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         PrefService.getBool('arduinoTimeoutEnabled');
                     print('arduinoTimeoutEnabled ' +
                         Settings.arduinoTimeoutEnabled.toString());
+                    Settings.timeoutChanged = true;
                     _saveSettings();
                   },
                 ),

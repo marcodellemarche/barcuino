@@ -285,10 +285,10 @@ class _MyHomePageState extends State<MyHomePage> {
       // fl -> Flutter app
       String sender = message.substring(1, 3);
       String receiver = message.substring(3, 5);
-      if (receiver == "fl") {
-        String rawCommands = message.substring(5);
+      if (receiver == DeviceName.FLUTTER) {
+        String rawCommands = message.substring(6);
         List<String> receivedCommands = rawCommands.split(';');
-        if (sender == "se") {
+        if (sender == DeviceName.SEA) {
           // Arduino Sea
           if (receivedCommands[0] == "ok") {
             // is an ok response to last command
@@ -320,10 +320,10 @@ class _MyHomePageState extends State<MyHomePage> {
             setState(() => logMessages.add(rawCommands));
           }
         }
-        else if (sender == "ea") {
+        else if (sender == DeviceName.EARTH) {
           // Arduino earth
         }
-        else if (sender == "bt") {
+        else if (sender == DeviceName.EARTH_BT) {
           // bt -> Arduino earth bluetooth
           setState(() => logMessages.add(rawCommands));
         }
@@ -487,11 +487,12 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void sendMessage(String message, String receiver, {bool hideSnackBar = false}) {
-    String sender = "fl";
-    String messageToSend = "#" + sender + receiver + ";" + message;
-    
+  void sendMessage(String receiver, String message, {bool hideSnackBar = false}) {
     if (hideSnackBar) Utils.removeCurrentSnackBar(_mainPageScaffoldKey);
+
+    String sender = DeviceName.FLUTTER;
+    String messageToSend = "#" + sender + receiver + ";" + message;
+  
     if (!message.endsWith('\n')) message += '\n';
     
     webSocket.send(messageToSend);

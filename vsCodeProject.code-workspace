@@ -4,13 +4,13 @@
 			"path": "."
 		},
 		{
-			"path": "arduino\\bluetooth\\bt_wemos_d1_mini32"
+			"path": "arduino\\earth\\ea_wemos_d1_mini32"
 		},
 		{
-			"path": "arduino\\websocket_server\\ws_wemos_d1_mini32"
+			"path": "arduino\\sea\\se_wemos_d1_mini32"
 		},
 		{
-			"path": "arduino\\websocket_server\\ws_d1_mini_8266"
+			"path": "arduino\\sea\\se_d1_mini_8266"
 		}
 	],
 	"settings": {

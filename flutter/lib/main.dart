@@ -271,44 +271,70 @@ class _MyHomePageState extends State<MyHomePage> {
     if (_autoReconnectTimer != null) _autoReconnectTimer.cancel();
   }
 
-  void _onMessageReceived(String serverMessage) {
+  void _onMessageReceived(String message) {
     String snackBarContent;
 
-    print(serverMessage);
-    if (serverMessage.startsWith('#')) {
-      List<String> receivedCommands = serverMessage.substring(1).split(';');
-      if (receivedCommands[0] == "ok") {
-        // is an ok response to last command
-        bool atLeastOneCommand = false;
+    print(message);
+    if (message.startsWith('#')) {
+      // it's a command
+      // message layout #ssrr;xxxxxx;xxxxx;xxxxx
+      // sender/receiver list:
+      // se -> Arduino sea
+      // ea -> Arduino earth
+      // bt -> Arduino earth bluetooth
+      // fl -> Flutter app
+      String sender = message.substring(1, 3);
+      String receiver = message.substring(3, 5);
+      if (receiver == "fl") {
+        String rawCommands = message.substring(5);
+        List<String> receivedCommands = rawCommands.split(';');
+        if (sender == "se") {
+          // Arduino Sea
+          if (receivedCommands[0] == "ok") {
+            // is an ok response to last command
+            bool atLeastOneCommand = false;
 
-        if (receivedCommands.contains("temp")) {
-          atLeastOneCommand = true;
-          int indexOfValue = receivedCommands.indexOf("temp") + 1;
-          String value = receivedCommands[indexOfValue];
-          setState(() => _temperature = double.tryParse(value));
-        }
+            if (receivedCommands.contains("temp")) {
+              atLeastOneCommand = true;
+              int indexOfValue = receivedCommands.indexOf("temp") + 1;
+              String value = receivedCommands[indexOfValue];
+              setState(() => _temperature = double.tryParse(value));
+            }
 
-        if (!atLeastOneCommand) {
-          String message = receivedCommands[1];
-          if (message.isNotEmpty) {
-            setState(() => logMessages.add(message));
-            snackBarContent = 'Arduino response: ' + message;
+            if (!atLeastOneCommand) {
+              String command = receivedCommands[1];
+              if (command.isNotEmpty) {
+                setState(() => logMessages.add(command));
+                snackBarContent = 'Arduino response: ' + command;
+              } else {
+                snackBarContent = 'Arduino response: ok';
+              }
+            }
+          } else if (receivedCommands[0] == "er") {
+            // is an error response to last command
+            // TODO
+            snackBarContent = 'ERROR! Arduino response: ' + rawCommands;
+            setState(() => logMessages.add(rawCommands));
           } else {
-            snackBarContent = 'Arduino response: ok';
+            // unknown message
+            setState(() => logMessages.add(rawCommands));
           }
         }
-      } else if (serverMessage.startsWith('#error;')) {
-        // is an error response to last command
-        // TODO
-        snackBarContent = 'ERROR! Arduino response: ' + serverMessage;
-        setState(() => logMessages.add(serverMessage));
-      } else {
-        // unknown message
-        setState(() => logMessages.add(serverMessage));
+        else if (sender == "ea") {
+          // Arduino earth
+        }
+        else if (sender == "bt") {
+          // bt -> Arduino earth bluetooth
+          setState(() => logMessages.add(rawCommands));
+        }
+        else {
+          // unknown sender
+        }
       }
-    } else {
-      // unknown message
-      setState(() => logMessages.add(serverMessage));
+    }
+    else {
+      // unknown message type
+      setState(() => logMessages.add(message));
     }
 
     if (snackBarContent != null) {
@@ -320,12 +346,12 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _switchOnLed() {
-    sendMessage('#led;on;', hideSnackBar: true);
+    sendMessage(DeviceName.SEA, 'led;on;', hideSnackBar: true);
     setState(() => _isLedOn = true);
   }
 
   void _switchOffLed() {
-    sendMessage('#led;off;', hideSnackBar: true);
+    sendMessage(DeviceName.SEA, 'led;off;', hideSnackBar: true);
     setState(() => _isLedOn = false);
   }
 
@@ -366,7 +392,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void _getStatus() {
     if (_isSocketConnected) {
       try {
-        sendMessage('#getStatus;');
+        sendMessage(DeviceName.SEA, 'getStatus;');
       } catch (err) {
         setState(() {
           logMessages.add(err.toString());
@@ -397,7 +423,7 @@ class _MyHomePageState extends State<MyHomePage> {
         ).then((ConfirmAction response) {
           switch (response) {
             case ConfirmAction.accept:
-              sendMessage('#ejectPastura;', hideSnackBar: true);
+              sendMessage(DeviceName.SEA, 'ejectPastura;', hideSnackBar: true);
               Utils.asyncAlert(
                 context: context,
                 title: 'Fatto!',
@@ -438,8 +464,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _onDirectionChanged() {
     if (_isSocketConnected) {
-      sendMessage(
-          '#setMotorsSpeed;${MotorsSpeed.getLeft()};${MotorsSpeed.getRight()};',
+      sendMessage(DeviceName.SEA, 'setMotorsSpeed;${MotorsSpeed.getLeft()};${MotorsSpeed.getRight()};',
           hideSnackBar: true);
     }
   }
@@ -451,22 +476,25 @@ class _MyHomePageState extends State<MyHomePage> {
       if (Settings.timeoutChanged) {
         int arduinoTimeout =
             Settings.arduinoTimeoutEnabled ? Settings.arduinoTimeout : 0;
-        sendMessage('#setTimeout;$arduinoTimeout;', hideSnackBar: true);
+        sendMessage(DeviceName.SEA, 'setTimeout;$arduinoTimeout;', hideSnackBar: true);
         Settings.timeoutChanged = false;
       }
       if (Settings.websocketChanged) {
-        sendMessage(
-            '#setWebSocket;${Settings.webSocketPing};${Settings.webSocketPongTimeout};${Settings.webSocketTimeoutsBeforeDisconnet};',
+        sendMessage(DeviceName.SEA, 'setWebSocket;${Settings.webSocketPing};${Settings.webSocketPongTimeout};${Settings.webSocketTimeoutsBeforeDisconnet};',
             hideSnackBar: true);
         Settings.websocketChanged = false;
       }
     }
   }
 
-  void sendMessage(String message, {bool hideSnackBar = false}) {
+  void sendMessage(String message, String receiver, {bool hideSnackBar = false}) {
+    String sender = "fl";
+    String messageToSend = "#" + sender + receiver + ";" + message;
+    
     if (hideSnackBar) Utils.removeCurrentSnackBar(_mainPageScaffoldKey);
     if (!message.endsWith('\n')) message += '\n';
-    webSocket.send(message);
+    
+    webSocket.send(messageToSend);
   }
 
   void _clearLogMessages() {

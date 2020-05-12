@@ -24,6 +24,7 @@ class Settings {
   static int webSocketPongTimeout;
   static int webSocketTimeoutsBeforeDisconnet;
   static bool autoReconnectSocketEnabled;
+  static int btBaudRate;
 
   static int defaultControllerType;
   static double leftAdjustment;
@@ -31,6 +32,7 @@ class Settings {
 
   static bool timeoutChanged = false;
   static bool websocketChanged = false;
+  static bool btConfigChanged = false;
 
   static List<Setting> _list = [
     Setting(
@@ -96,6 +98,10 @@ class Settings {
     Setting(
       key: 'rightAdjustment',
       dataType: 'double',
+    ),
+    Setting(
+      key: 'btBaudRate',
+      dataType: 'int',
     ),
   ];
 
@@ -194,6 +200,7 @@ class Settings {
       clientPing = await getByKey('clientPing') ?? 750;
       autoReconnectSocketEnabled = await getByKey('autoReconnectSocketEnabled') ?? true;
       defaultControllerType = await getByKey('defaultControllerType') ?? 1;
+      btBaudRate = await getByKey('btBaudRate') ?? 9600;
     } catch (err) {
       print(err.toString());
     }
@@ -216,6 +223,7 @@ class Settings {
       await setByKey('clientPing', clientPing);
       await setByKey('autoReconnectSocketEnabled', autoReconnectSocketEnabled);
       await setByKey('defaultControllerType', defaultControllerType);
+      await setByKey('btBaudRate', btBaudRate);
     } catch (err) {
       print(err.toString());
     }

@@ -258,7 +258,7 @@ void setup()
 {
   // Start the Serial communication to send messages to the computer
   Serial.begin(115200);
-  SerialBT.begin(9600, SERIAL_8N1, BTRX1, BTTX1);
+  SerialBT.begin(115200, SERIAL_8N1, BTRX1, BTTX1);
   delay(500);
 
   // set pinMode

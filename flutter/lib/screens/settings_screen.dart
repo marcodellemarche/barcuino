@@ -400,6 +400,62 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 /*******************************************************************/
+                PreferenceTitle('Arduino Earth Bluetooth'),
+                PreferenceDialogLink(
+                  'Bluetooth baud rate',
+                  desc: Settings.btBaudRate.toString(),
+                  onPop: () {
+                    int inputVal =
+                        int.tryParse(PrefService.getString('btBaudRate'));
+                    if (inputVal != null && Settings.btBaudRate != inputVal) {
+                      Settings.btConfigChanged = true;
+                      Settings.btBaudRate = inputVal;
+                      _saveSettings();
+                    }
+                  },
+                  barrierDismissible: false,
+                  dialog: PreferenceDialog(
+                    [
+                      RadioPreference(
+                          '9600', 'AT+BAUD4', 'btBaudRate_selected'),
+                      RadioPreference(
+                          '57600', 'AT+BAUD7', 'btBaudRate_selected'),
+                      RadioPreference(
+                          '115200', 'AT+BAUD8', 'btBaudRate_selected'),
+                      RadioPreference(
+                          '230400', 'AT+BAUD9', 'btBaudRate_selected'),
+                    ],
+                    // [
+                    //   TextFieldPreference(
+                    //     'Baud rate',
+                    //     'btBaudRate',
+                    //     defaultVal: Settings.btBaudRate.toString(),
+                    //     keyboardType: TextInputType.numberWithOptions(
+                    //       decimal: false,
+                    //       signed: false,
+                    //     ),
+                    //     validator: (string) {
+                    //       int inputVal = int.tryParse(string);
+                    //       if (inputVal == null ||
+                    //           inputVal < 10 ||
+                    //           inputVal > 5000) {
+                    //         return 'Inserire un valore fra 10 e 5000';
+                    //       }
+                    //       return null;
+                    //     },
+                    //   ),
+                    // ],
+                    title: 'Baud rate',
+                    onlySaveOnSubmit: true,
+                    submitText: 'Ok',
+                    cancelText: 'Cancel',
+                    onCancel: () {
+                      String previousVal = Settings.btBaudRate.toString();
+                      PrefService.setString('btBaudRate', previousVal);
+                    },
+                  ),
+                ),
+                /*******************************************************************/
                 PreferenceTitle('WiFi'),
                 PreferenceDialogLink(
                   'WiFi SSID',

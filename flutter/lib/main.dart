@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:connectivity/connectivity.dart';
@@ -6,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:preferences/preference_service.dart';
 import 'package:wifi/wifi.dart';
 import 'package:wifi_configuration/wifi_configuration.dart';
+import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 
 import './models/settings.dart';
 import './screens/settings_screen.dart';
@@ -15,6 +18,8 @@ import './widgets/direction/direction_controller.dart';
 import './widgets/log_messages.dart';
 import './widgets/temperature.dart';
 import './models/motors_speed.dart';
+import './screens/bt_discovery_screen.dart';
+import './screens/select_bonded_device_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,9 +51,11 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   final _mainPageScaffoldKey = GlobalKey<ScaffoldState>();
   static WebSocketsNotifications webSocket = new WebSocketsNotifications();
+  static BluetoothConnection connection;
   //String wsServerAddress = '192.168.4.1';
   //int wsServerPort = 81;
   static bool _isSocketConnected = false;
+  static bool _isBtConnected = false;
   bool _isPasturaEjected = false;
   bool _isLedOn = false;
   bool _isAdjstmentDisabled = true;
@@ -83,6 +90,63 @@ class _MyHomePageState extends State<MyHomePage> {
   //   controllerType: 1,
   //   adjustmentsDisabled: _isAdjstmentDisabled,
   // );
+
+  Future<void> _btConnect(BluetoothDevice device) async {
+    if (connection == null) {
+      try {
+        connection = await BluetoothConnection.toAddress(device.address);
+
+        setState(() {
+          logMessages.add('Connected to the device');
+          _isBtConnected = true;
+        });
+
+        connection.input.listen((Uint8List data) {
+          String btDataReceived = ascii.decode(data);
+          print('BT data incoming: $btDataReceived');
+
+          if (btDataReceived.startsWith('!')) {
+            connection.finish(); // Closing connection
+            print('Disconnecting by local host');
+          } else {
+            _onMessageReceived(btDataReceived);
+          }
+        }).onDone(() {
+          setState(() {
+            logMessages.add('BT Disconnected by remote request');
+            _isBtConnected = false;
+          });
+        });
+      } catch (exception) {
+        setState(() {
+          logMessages.add(
+              'Cannot connect BT, exception occured: ${exception.toString()}');
+          _isBtConnected = false;
+        });
+      }
+    } else {
+      if (connection.isConnected) {
+        setState(() {
+          logMessages.add('bt already connected');
+          _isBtConnected = true;
+        });
+      } else {
+        setState(() {
+          logMessages.add('bt not connected, but connection object != null');
+          _isBtConnected = false;
+        });
+      }
+    }
+  }
+
+  void _onBtConnectionSuccess() {
+    if (!_isBtConnected) {
+      _isBtConnected = true;
+      print('_isBtConnected');
+      setState(() => _isBtConnected = true);
+      _setStatusTimer();
+    }
+  }
 
   Future<void> _wifiConnect2() async {
     WifiConnectionStatus connectionResult =
@@ -236,7 +300,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (Settings.statusTimerEnabled) {
       _statusTimer = new Timer.periodic(
           Duration(milliseconds: Settings.statusTimer), (timer) {
-        if (_isSocketConnected) {
+        if (_isSocketConnected || _isBtConnected) {
           _getStatus();
         }
       });
@@ -319,20 +383,16 @@ class _MyHomePageState extends State<MyHomePage> {
             // unknown message
             setState(() => logMessages.add(rawCommands));
           }
-        }
-        else if (sender == DeviceName.EARTH) {
+        } else if (sender == DeviceName.EARTH) {
           // Arduino earth
-        }
-        else if (sender == DeviceName.EARTH_BT) {
+        } else if (sender == DeviceName.EARTH_BT) {
           // bt -> Arduino earth bluetooth
           setState(() => logMessages.add(rawCommands));
-        }
-        else {
+        } else {
           // unknown sender
         }
       }
-    }
-    else {
+    } else {
       // unknown message type
       setState(() => logMessages.add(message));
     }
@@ -356,7 +416,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _onLedButtonPressed() {
-    if (_isSocketConnected) {
+    if (_isSocketConnected || _isBtConnected) {
       if (_isLedOn)
         _switchOffLed();
       else
@@ -390,7 +450,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _getStatus() {
-    if (_isSocketConnected) {
+    if (_isSocketConnected || _isBtConnected) {
       try {
         sendMessage(DeviceName.SEA, 'getStatus;');
       } catch (err) {
@@ -411,7 +471,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _ejectPastura() {
-    if (_isSocketConnected) {
+    if (_isSocketConnected || _isBtConnected) {
       if (!_isPasturaEjected) {
         Utils.asyncConfirmDialog(
           context: context,
@@ -463,8 +523,9 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _onDirectionChanged() {
-    if (_isSocketConnected) {
-      sendMessage(DeviceName.SEA, 'setMotorsSpeed;${MotorsSpeed.getLeft()};${MotorsSpeed.getRight()};',
+    if (_isSocketConnected || _isBtConnected) {
+      sendMessage(DeviceName.SEA,
+          'setMotorsSpeed;${MotorsSpeed.getLeft()};${MotorsSpeed.getRight()};',
           hideSnackBar: true);
     }
   }
@@ -472,30 +533,37 @@ class _MyHomePageState extends State<MyHomePage> {
   void _onSettingsChanged() {
     print('Settings changed');
     _setStatusTimer();
-    if (_isSocketConnected) {
+    if (_isSocketConnected || _isBtConnected) {
       if (Settings.timeoutChanged) {
         int arduinoTimeout =
             Settings.arduinoTimeoutEnabled ? Settings.arduinoTimeout : 0;
-        sendMessage(DeviceName.SEA, 'setTimeout;$arduinoTimeout;', hideSnackBar: true);
+        sendMessage(DeviceName.SEA, 'setTimeout;$arduinoTimeout;',
+            hideSnackBar: true);
         Settings.timeoutChanged = false;
       }
       if (Settings.websocketChanged) {
-        sendMessage(DeviceName.SEA, 'setWebSocket;${Settings.webSocketPing};${Settings.webSocketPongTimeout};${Settings.webSocketTimeoutsBeforeDisconnet};',
+        sendMessage(DeviceName.SEA,
+            'setWebSocket;${Settings.webSocketPing};${Settings.webSocketPongTimeout};${Settings.webSocketTimeoutsBeforeDisconnet};',
             hideSnackBar: true);
         Settings.websocketChanged = false;
       }
     }
   }
 
-  void sendMessage(String receiver, String message, {bool hideSnackBar = false}) {
+  void sendMessage(
+    String receiver,
+    String message, {
+    bool hideSnackBar = false,
+  }) {
     if (hideSnackBar) Utils.removeCurrentSnackBar(_mainPageScaffoldKey);
 
     String sender = DeviceName.FLUTTER;
     String messageToSend = "#" + sender + receiver + ";" + message;
-  
-    if (!message.endsWith('\n')) message += '\n';
-    
-    webSocket.send(messageToSend);
+
+    if (!messageToSend.endsWith('\n')) messageToSend += '\n';
+
+    if (_isSocketConnected) webSocket.send(messageToSend);
+    if (_isBtConnected) connection.output.add(ascii.encode(messageToSend));
   }
 
   void _clearLogMessages() {
@@ -595,6 +663,60 @@ class _MyHomePageState extends State<MyHomePage> {
                 ],
               ),
               Divider(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: <Widget>[
+                  RaisedButton(
+                    child: const Text(
+                      'BT Connect',
+                      style: TextStyle(color: Colors.white, fontSize: 20.0),
+                    ),
+                    color: Colors.blue,
+                    onPressed: () async {
+                      final BluetoothDevice selectedDevice =
+                          await Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) {
+                            return SelectBondedDevicePage(
+                                checkAvailability: true);
+                          },
+                        ),
+                      );
+
+                      if (selectedDevice != null) {
+                        print('Connect -> selected ' + selectedDevice.address);
+                        _btConnect(selectedDevice);
+                      } else {
+                        print('Connect -> no device selected');
+                      }
+                    },
+                  ),
+                  RaisedButton(
+                      child: const Text(
+                        'BT List',
+                        style: TextStyle(color: Colors.white, fontSize: 20.0),
+                      ),
+                      color: Colors.blue,
+                      onPressed: () async {
+                        final BluetoothDevice selectedDevice =
+                            await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) {
+                              return DiscoveryPage();
+                            },
+                          ),
+                        );
+
+                        if (selectedDevice != null) {
+                          print('Discovery -> selected ' +
+                              selectedDevice.address);
+                          _btConnect(selectedDevice);
+                        } else {
+                          print('Discovery -> no device selected');
+                        }
+                      }),
+                ],
+              ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: <Widget>[

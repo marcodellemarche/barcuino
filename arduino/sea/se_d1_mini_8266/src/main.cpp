@@ -267,7 +267,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
   {
     // Save the last time healtcheck was received
     previousHealtCheck = millis();
-
     //Serial.print("<- ");Serial.print("WStype_PING ");Serial.println(millis());
   }
   else if (type == WStype_PONG)
@@ -438,7 +437,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
             isHealtCheckTimeoutEnabled = true;
             respondToCommand(num, sender);
           }
-          else
+          else\
           {
             // resolution not supported
             respondToCommand(num, sender, false, "setTimeout millis between 0 a 25000!");

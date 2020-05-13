@@ -120,10 +120,7 @@ class _MyHomePageState extends State<MyHomePage> {
           connection = await BluetoothConnection.toAddress(fixedAddress);
         }
 
-        setState(() {
-          logMessages.add('Connected to the device');
-          _isBtConnected = true;
-        });
+        _onBtConnectionSuccess();
 
         connection.input.listen(_onBtData).onDone(() {
           setState(() {
@@ -131,23 +128,6 @@ class _MyHomePageState extends State<MyHomePage> {
             _isBtConnected = false;
           });
         });
-
-        // connection.input.listen((Uint8List data) {
-        //   String btDataReceived = ascii.decode(data);
-        //   print('BT data incoming: $btDataReceived');
-
-        //   if (btDataReceived.startsWith('!')) {
-        //     connection.finish(); // Closing connection
-        //     print('Disconnecting by local host');
-        //   } else {
-        //     _onMessageReceived(btDataReceived);
-        //   }
-        // }).onDone(() {
-        //   setState(() {
-        //     logMessages.add('BT Disconnected by remote request');
-        //     _isBtConnected = false;
-        //   });
-        // });
 
       } catch (exception) {
         _forceBtReconnection();

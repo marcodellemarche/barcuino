@@ -22,6 +22,11 @@
 
 #define TEMP_SENSORS_BUS 18
 
+const String FLUTTER = "fl";
+const String SEA = "se";
+const String EARTH = "ea";
+const String EARTH_BT = "bt";
+
 bool debug = true; // set false to avoid debug serial print
 bool debugSocket = false; // set false to avoid debug serial print
 
@@ -45,7 +50,7 @@ int wsTimeoutsBeforeDisconnet = 0;
 bool isSocketConnected = false;
 
 // Global variables
-String me = "se";
+String me = SEA;
 String commandSeparator = ";";
 Servo ejectServo;
 AnalogController ledRgbRed;
@@ -199,6 +204,27 @@ void checkHealthCheckTime()
   }
 }
 
+String getStatusString() {
+  String result = "status" + commandSeparator;
+  result += "leftMotor" + commandSeparator + String(leftMotor.intensity) + commandSeparator;
+  result += "rightMotor" + commandSeparator + String(rightMotor.intensity) + commandSeparator;
+  result += "ledRgbRed" + commandSeparator + String(ledRgbRed.intensity) + commandSeparator;
+  result += "ledRgbGreen" + commandSeparator + String(ledRgbGreen.intensity) + commandSeparator;
+  result += "ledRgbBlue" + commandSeparator + String(ledRgbBlue.intensity) + commandSeparator;
+  result += "ledBack" + commandSeparator + String(ledBack.intensity) + commandSeparator;
+  result += "healtCheckTimeout" + commandSeparator + String(healtCheckTimeout) + commandSeparator;
+  result += "isHealtCheckTimeoutEnabled" + commandSeparator + String(isHealtCheckTimeoutEnabled) + commandSeparator;
+  result += "disconnectionCounter" + commandSeparator + String(disconnectionCounter) + commandSeparator;
+  result += "pingInterval" + commandSeparator + String(pingInterval) + commandSeparator;
+  result += "pongTimeout" + commandSeparator + String(pongTimeout) + commandSeparator;
+  result += "wsTimeoutsBeforeDisconnet" + commandSeparator + String(wsTimeoutsBeforeDisconnet) + commandSeparator;
+  
+  sensors.requestTemperaturesByAddress(tempSensor1);
+  float temp = sensors.getTempC(tempSensor1);
+  result += "temp" + commandSeparator + String(temp) + commandSeparator;
+  return result;
+}
+
 void respondToCommand(uint8_t num, String receiver, bool isOk = true, String message = "") {
   String response = "#" + me + receiver + commandSeparator;
 
@@ -232,7 +258,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
     {
       Serial.println("WebSocket client connected.");
       isSocketConnected = true;
-      respondToCommand(num, "fl", true, "Hi! My name is Barkino.");
+      respondToCommand(num, FLUTTER, true, "Hi! My name is Barkino.");
+      delay(20);
+      respondToCommand(num, FLUTTER, true, getStatusString());
     }
     else
     {
@@ -264,13 +292,12 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 
     Serial.println("WebSocket client error, stopping motors");
     stopMotors();
-    respondToCommand(num, "fl", false, "WebSocket client error, stopping motors");
+    respondToCommand(num, FLUTTER, false, "WebSocket client error, stopping motors");
   }
   else if (type == WStype_PING)
   {
     // Save the last time healtcheck was received
     previousHealtCheck = millis();
-
     //Serial.print("<- ");Serial.print("WStype_PING ");Serial.println(millis());
   }
   else if (type == WStype_PONG)
@@ -297,7 +324,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
       String sender = serialData.substring(1, 3);
       String receiver = serialData.substring(3, 5);
 
-      if (receiver == "se")
+      if (receiver == SEA)
       {
         String rawCommands = serialData.substring(6);
 
@@ -476,20 +503,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         }
         else if (command == "getStatus") {
           // get status send back temperature and motors values
-          String result = "status" + commandSeparator;
-          result += "leftMotor" + commandSeparator + String(leftMotor.intensity) + commandSeparator;
-          result += "rightMotor" + commandSeparator + String(rightMotor.intensity) + commandSeparator;
-          result += "ledRgbRed" + commandSeparator + String(ledRgbRed.intensity) + commandSeparator;
-          result += "ledRgbGreen" + commandSeparator + String(ledRgbGreen.intensity) + commandSeparator;
-          result += "ledRgbBlue" + commandSeparator + String(ledRgbBlue.intensity) + commandSeparator;
-          result += "ledBack" + commandSeparator + String(ledBack.intensity) + commandSeparator;
-          result += "healtCheckTimeout" + commandSeparator + String(healtCheckTimeout) + commandSeparator;
-          result += "isHealtCheckTimeoutEnabled" + commandSeparator + String(isHealtCheckTimeoutEnabled) + commandSeparator;
-          result += "disconnectionCounter" + commandSeparator + String(disconnectionCounter) + commandSeparator;
-          
-          sensors.requestTemperaturesByAddress(tempSensor1);
-          float temp = sensors.getTempC(tempSensor1);
-          result += "temp" + commandSeparator + String(temp) + commandSeparator;
+          String result = getStatusString();
 
           respondToCommand(num, sender, true, result);
         }
@@ -561,7 +575,7 @@ void setup()
   // workaround DHCP crash on ESP32 when AP Mode!!!
   // https://github.com/espressif/arduino-esp32/issues/2025#issuecomment-562848209
   WiFi.mode(WIFI_AP);
-  esp_wifi_set_protocol( WIFI_IF_STA, WIFI_PROTOCOL_LR );
+  //esp_wifi_set_protocol( WIFI_IF_STA, WIFI_PROTOCOL_LR );
   WiFi.softAP(mySsid, myPassword);
   delay(1000);
   // workaround DHCP crash on ESP32 when AP Mode!!! Non servirebbe se funzionasse WiFi.persistent(false)
@@ -596,10 +610,14 @@ void loop()
       lastSocketClientCounter = connectedSocketClients;
       disconnectionCounter = 0;
       previousHealtCheck = 0;
-      if (connectedSocketClients > 0)
+      if (connectedSocketClients > 0) {
+        digitalWrite(LED_BUILTIN, LOW);
         ledRgbGreen.on();
-      else
+      }
+      else {
+        digitalWrite(LED_BUILTIN, HIGH);
         ledRgbGreen.off();
+      }
     }
 
     if (connectedSocketClients > 0)

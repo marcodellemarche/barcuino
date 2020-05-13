@@ -52,6 +52,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final _mainPageScaffoldKey = GlobalKey<ScaffoldState>();
   static WebSocketsNotifications webSocket = new WebSocketsNotifications();
   static BluetoothConnection connection;
+  static String btDeviceAddress = "98:D3:31:20:40:EB";
   //String wsServerAddress = '192.168.4.1';
   //int wsServerPort = 81;
   static bool _isSocketConnected = false;
@@ -78,6 +79,9 @@ class _MyHomePageState extends State<MyHomePage> {
   StreamSubscription _onWifiChanged;
   Future<bool> _dataLoaded;
 
+  // bt data trick
+  List<int> _btIncomingBuffer = List<int>();
+
   // // set as static objects to avoid re-building on each timer trigger
   // DirectionController joystick = DirectionController(
   //   onDirectionChanged: _onDirectionChanged,
@@ -91,33 +95,64 @@ class _MyHomePageState extends State<MyHomePage> {
   //   adjustmentsDisabled: _isAdjstmentDisabled,
   // );
 
-  Future<void> _btConnect(BluetoothDevice device) async {
+  void _onBtData(Uint8List data) {
+    _btIncomingBuffer += data;
+    // If there is a sample, and it is full received
+    bool isStringEnd = (_btIncomingBuffer.contains('\n'.codeUnitAt(0)) ||
+        _btIncomingBuffer.contains('\r'.codeUnitAt(0)));
+
+    if (isStringEnd) {
+      _btIncomingBuffer.removeWhere((int char) {
+        return (char == '\n'.codeUnitAt(0) || char == '\r'.codeUnitAt(0));
+      });
+      String btDataReceived = ascii.decode(_btIncomingBuffer);
+      _btIncomingBuffer.clear();
+      _onMessageReceived(btDataReceived);
+    }
+  }
+
+  Future<void> _btConnect({BluetoothDevice device, String fixedAddress}) async {
     if (connection == null) {
       try {
-        connection = await BluetoothConnection.toAddress(device.address);
+        if (device != null)
+          connection = await BluetoothConnection.toAddress(device.address);
+        else if (fixedAddress != null) {
+          connection = await BluetoothConnection.toAddress(fixedAddress);
+        }
 
         setState(() {
           logMessages.add('Connected to the device');
           _isBtConnected = true;
         });
 
-        connection.input.listen((Uint8List data) {
-          String btDataReceived = ascii.decode(data);
-          print('BT data incoming: $btDataReceived');
-
-          if (btDataReceived.startsWith('!')) {
-            connection.finish(); // Closing connection
-            print('Disconnecting by local host');
-          } else {
-            _onMessageReceived(btDataReceived);
-          }
-        }).onDone(() {
+        connection.input.listen(_onBtData).onDone(() {
           setState(() {
             logMessages.add('BT Disconnected by remote request');
             _isBtConnected = false;
           });
         });
+
+        // connection.input.listen((Uint8List data) {
+        //   String btDataReceived = ascii.decode(data);
+        //   print('BT data incoming: $btDataReceived');
+
+        //   if (btDataReceived.startsWith('!')) {
+        //     connection.finish(); // Closing connection
+        //     print('Disconnecting by local host');
+        //   } else {
+        //     _onMessageReceived(btDataReceived);
+        //   }
+        // }).onDone(() {
+        //   setState(() {
+        //     logMessages.add('BT Disconnected by remote request');
+        //     _isBtConnected = false;
+        //   });
+        // });
+
       } catch (exception) {
+        _forceBtReconnection();
+        return;
+        print(exception.toString());
         setState(() {
           logMessages.add(
               'Cannot connect BT, exception occured: ${exception.toString()}');
@@ -132,11 +167,20 @@ class _MyHomePageState extends State<MyHomePage> {
         });
       } else {
         setState(() {
+          connection.finish();
+          _forceBtReconnection();
+          return;
           logMessages.add('bt not connected, but connection object != null');
           _isBtConnected = false;
         });
       }
     }
+  }
+
+  Future<void> _forceBtReconnection() async {
+    await FlutterBluetoothSerial.instance.requestDisable();
+    await FlutterBluetoothSerial.instance.requestEnable();
+    _btConnect(fixedAddress: btDeviceAddress);
   }
 
   void _onBtConnectionSuccess() {
@@ -554,7 +598,7 @@ class _MyHomePageState extends State<MyHomePage> {
     String receiver,
     String message, {
     bool hideSnackBar = false,
-  }) {
+  }) async {
     if (hideSnackBar) Utils.removeCurrentSnackBar(_mainPageScaffoldKey);
 
     String sender = DeviceName.FLUTTER;
@@ -563,7 +607,11 @@ class _MyHomePageState extends State<MyHomePage> {
     if (!messageToSend.endsWith('\n')) messageToSend += '\n';
 
     if (_isSocketConnected) webSocket.send(messageToSend);
-    if (_isBtConnected) connection.output.add(ascii.encode(messageToSend));
+    if (_isBtConnected) {
+      connection.output.add(ascii.encode(messageToSend));
+      await connection.output.allSent;
+      //print("Sent to bt: $messageToSend");
+    }
   }
 
   void _clearLogMessages() {
@@ -673,22 +721,25 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                     color: Colors.blue,
                     onPressed: () async {
-                      final BluetoothDevice selectedDevice =
-                          await Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) {
-                            return SelectBondedDevicePage(
-                                checkAvailability: true);
-                          },
-                        ),
-                      );
+                      // final BluetoothDevice selectedDevice =
+                      //     await Navigator.of(context).push(
+                      //   MaterialPageRoute(
+                      //     builder: (context) {
+                      //       return SelectBondedDevicePage(
+                      //           checkAvailability: true);
+                      //     },
+                      //   ),
+                      // );
 
-                      if (selectedDevice != null) {
-                        print('Connect -> selected ' + selectedDevice.address);
-                        _btConnect(selectedDevice);
-                      } else {
-                        print('Connect -> no device selected');
-                      }
+                      // if (selectedDevice != null) {
+                      //   print('Connect -> selected ' + selectedDevice.address);
+                      //   _btConnect(device: selectedDevice);
+                      // } else {
+                      //   print('Connect -> no device selected');
+                      //   _btConnect(fixedAddress: btDeviceAddress);
+                      // }
+
+                      _btConnect(fixedAddress: btDeviceAddress);
                     },
                   ),
                   RaisedButton(
@@ -710,9 +761,10 @@ class _MyHomePageState extends State<MyHomePage> {
                         if (selectedDevice != null) {
                           print('Discovery -> selected ' +
                               selectedDevice.address);
-                          _btConnect(selectedDevice);
+                          _btConnect(device: selectedDevice);
                         } else {
                           print('Discovery -> no device selected');
+                          _btConnect(fixedAddress: btDeviceAddress);
                         }
                       }),
                 ],

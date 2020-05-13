@@ -19,6 +19,11 @@
 
 #define TEMP_SENSORS_BUS D3
 
+const String FLUTTER = "fl";
+const String SEA = "se";
+const String EARTH = "ea";
+const String EARTH_BT = "bt";
+
 bool debug = true; // set false to avoid debug serial print
 bool debugSocket = true; // set false to avoid debug serial print
 
@@ -42,7 +47,7 @@ int wsTimeoutsBeforeDisconnet = 0;
 bool isSocketConnected = false;
 
 // Global variables
-String me = "se";
+String me = SEA;
 String commandSeparator = ";";
 Servo ejectServo;
 AnalogController ledRgbRed;
@@ -196,6 +201,27 @@ void checkHealthCheckTime()
   }
 }
 
+String getStatusString() {
+  String result = "status" + commandSeparator;
+  result += "leftMotor" + commandSeparator + String(leftMotor.intensity) + commandSeparator;
+  result += "rightMotor" + commandSeparator + String(rightMotor.intensity) + commandSeparator;
+  result += "ledRgbRed" + commandSeparator + String(ledRgbRed.intensity) + commandSeparator;
+  result += "ledRgbGreen" + commandSeparator + String(ledRgbGreen.intensity) + commandSeparator;
+  result += "ledRgbBlue" + commandSeparator + String(ledRgbBlue.intensity) + commandSeparator;
+  result += "ledBack" + commandSeparator + String(ledBack.intensity) + commandSeparator;
+  result += "healtCheckTimeout" + commandSeparator + String(healtCheckTimeout) + commandSeparator;
+  result += "isHealtCheckTimeoutEnabled" + commandSeparator + String(isHealtCheckTimeoutEnabled) + commandSeparator;
+  result += "disconnectionCounter" + commandSeparator + String(disconnectionCounter) + commandSeparator;
+  result += "pingInterval" + commandSeparator + String(pingInterval) + commandSeparator;
+  result += "pongTimeout" + commandSeparator + String(pongTimeout) + commandSeparator;
+  result += "wsTimeoutsBeforeDisconnet" + commandSeparator + String(wsTimeoutsBeforeDisconnet) + commandSeparator;
+  
+  sensors.requestTemperaturesByAddress(tempSensor1);
+  float temp = sensors.getTempC(tempSensor1);
+  result += "temp" + commandSeparator + String(temp) + commandSeparator;
+  return result;
+}
+
 void respondToCommand(uint8_t num, String receiver, bool isOk = true, String message = "") {
   String response = "#" + me + receiver + commandSeparator;
 
@@ -229,7 +255,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
     {
       Serial.println("WebSocket client connected.");
       isSocketConnected = true;
-      respondToCommand(num, "fl", true, "Hi! My name is Barkino.");
+      respondToCommand(num, FLUTTER , true, "Hi! My name is Barkino.");
+      delay(20);
+      respondToCommand(num, FLUTTER, true, getStatusString());
     }
     else
     {
@@ -261,7 +289,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 
     Serial.println("WebSocket client error, stopping motors");
     stopMotors();
-    respondToCommand(num, "fl", false, "WebSocket client error, stopping motors");
+    respondToCommand(num, FLUTTER, false, "WebSocket client error, stopping motors");
   }
   else if (type == WStype_PING)
   {
@@ -293,7 +321,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
       String sender = serialData.substring(1, 3);
       String receiver = serialData.substring(3, 5);
 
-      if (receiver == "se")
+      if (receiver == SEA)
       {
         String rawCommands = serialData.substring(6);
 
@@ -437,56 +465,43 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
             isHealtCheckTimeoutEnabled = true;
             respondToCommand(num, sender);
           }
-          else\
+          else
           {
             // resolution not supported
             respondToCommand(num, sender, false, "setTimeout millis between 0 a 25000!");
           }
         }
         else if (command == "setWebSocket") {
-          respondToCommand(num, sender, false, "setWebSocket command not supported!");
-          // String strPingInterval = getValue(serialData, 1);
-          // String strPongTimeout = getValue(serialData, 2);
-          // String strWsTimeoutsBeforeDisconnet = getValue(serialData, 3);
+          //respondToCommand(num, sender, false, "setWebSocket command not supported!");
+          String strPingInterval = getValue(serialData, 1);
+          String strPongTimeout = getValue(serialData, 2);
+          String strWsTimeoutsBeforeDisconnet = getValue(serialData, 3);
 
-          // int newPingInterval = strPingInterval.toInt(); // value in millis
-          // int newPongTimeout = strPongTimeout.toInt(); // value in millis
-          // int newWsTimeoutsBeforeDisconnet = strWsTimeoutsBeforeDisconnet.toInt(); // value in millis
+          int newPingInterval = strPingInterval.toInt(); // value in millis
+          int newPongTimeout = strPongTimeout.toInt(); // value in millis
+          int newWsTimeoutsBeforeDisconnet = strWsTimeoutsBeforeDisconnet.toInt(); // value in millis
 
-          // if (newPingInterval == 0) {
-          //   webSocket.disableHeartbeat();
-          // }
-          // else if (newPingInterval > 0 && newPingInterval <= 25000 
-          //   && newPongTimeout > 0 && newPongTimeout <= 25000)
-          // {
-          //   pingInterval = newPingInterval;
-          //   pongTimeout = newPongTimeout;
-          //   wsTimeoutsBeforeDisconnet = newWsTimeoutsBeforeDisconnet;
-          //   webSocket.enableHeartbeat(pingInterval, pongTimeout, wsTimeoutsBeforeDisconnet);
-          //   respondToCommand(num);
-          // }
-          // else
-          // {
-          //   // resolution not supported
-          //   respondToCommand(num, false, "setWebSocket command error!");
-          // }
+          if (newPingInterval == 0) {
+            webSocket.disableHeartbeat();
+          }
+          else if (newPingInterval > 0 && newPingInterval <= 25000 
+            && newPongTimeout > 0 && newPongTimeout <= 25000)
+          {
+            pingInterval = newPingInterval;
+            pongTimeout = newPongTimeout;
+            wsTimeoutsBeforeDisconnet = newWsTimeoutsBeforeDisconnet;
+            webSocket.enableHeartbeat(pingInterval, pongTimeout, wsTimeoutsBeforeDisconnet);
+            respondToCommand(num, sender);
+          }
+          else
+          {
+            // resolution not supported
+            respondToCommand(num, sender, false, "setWebSocket command error!");
+          }
         }
         else if (command == "getStatus") {
           // get status send back temperature and motors values
-          String result = "status" + commandSeparator;
-          result += "leftMotor" + commandSeparator + String(leftMotor.intensity) + commandSeparator;
-          result += "rightMotor" + commandSeparator + String(rightMotor.intensity) + commandSeparator;
-          result += "ledRgbRed" + commandSeparator + String(ledRgbRed.intensity) + commandSeparator;
-          result += "ledRgbGreen" + commandSeparator + String(ledRgbGreen.intensity) + commandSeparator;
-          result += "ledRgbBlue" + commandSeparator + String(ledRgbBlue.intensity) + commandSeparator;
-          result += "ledBack" + commandSeparator + String(ledBack.intensity) + commandSeparator;
-          result += "healtCheckTimeout" + commandSeparator + String(healtCheckTimeout) + commandSeparator;
-          result += "isHealtCheckTimeoutEnabled" + commandSeparator + String(isHealtCheckTimeoutEnabled) + commandSeparator;
-          result += "disconnectionCounter" + commandSeparator + String(disconnectionCounter) + commandSeparator;
-          
-          sensors.requestTemperaturesByAddress(tempSensor1);
-          float temp = sensors.getTempC(tempSensor1);
-          result += "temp" + commandSeparator + String(temp) + commandSeparator;
+          String result = getStatusString();
 
           respondToCommand(num, sender, true, result);
         }
@@ -560,6 +575,7 @@ void setup()
   delay(500);
   WiFi.softAPConfig(local_ip, gateway, netmask);
 
+  webSocket.enableHeartbeat(pingInterval, pongTimeout, wsTimeoutsBeforeDisconnet);
   webSocket.begin();
   webSocket.onEvent(webSocketEvent);
 

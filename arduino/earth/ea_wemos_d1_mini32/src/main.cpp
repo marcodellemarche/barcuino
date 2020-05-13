@@ -22,6 +22,11 @@
 #define BTRX1 21 // TX on BT
 #define BTTX1 22 // RX on BT
 
+const String FLUTTER = "fl";
+const String SEA = "se";
+const String EARTH = "ea";
+const String EARTH_BT = "bt";
+
 bool debug = true; // set false to avoid debug serial print
 bool debugSocket = true; // set false to avoid debug serial print
 
@@ -34,13 +39,13 @@ HardwareSerial SerialBT(1);
 
 WebServer server;
 WebSocketsClient webSocket = WebSocketsClient();
-int pingInterval = 750;
-int pongTimeout = 500;
-int wsTimeoutsBeforeDisconnet = 0;
+// int pingInterval = 750;
+// int pongTimeout = 500;
+// int wsTimeoutsBeforeDisconnet = 0;
 bool isSocketConnected = false;
 
 // Global variables
-String me = "ea";
+String me = EARTH;
 String commandSeparator = ";";
 AnalogController ledRgbRed;
 AnalogController ledRgbBlue;
@@ -120,23 +125,25 @@ void respondToCommand(String receiver, bool isOk = true, String message = "") {
     Serial.println(response);
   }
 
-  if (receiver == "se") {
+  if (receiver == SEA) {
     webSocket.sendTXT(response);     
-  } else if (receiver == "fl") {
+  } else if (receiver == FLUTTER) {
     SerialBT.println(response);
+    delay(10);
   } else {
     return;
   }
 }
 
 void spreadMessage(String receiver, String message) {
-  if (receiver == "se") {
+  if (receiver == SEA) {
     webSocket.sendTXT(message);     
-  } else if (receiver == "fl") {
-    Serial.println("Message for flutter!");
+  } else if (receiver == FLUTTER) {
     SerialBT.println(message);
-  } else if (receiver == "bt") {
+    delay(10);
+  } else if (receiver == EARTH_BT) {
     SerialBT.println(message);
+    delay(10);
   }
   else {
     return;
@@ -156,7 +163,7 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
     {
       Serial.println("Earth to Sea connected.");
       isSocketConnected = true;
-      respondToCommand("fl", true, "Earth to Sea connected.");
+      respondToCommand(FLUTTER, true, "Earth to Sea connected.");
     }
     else
     {
@@ -187,7 +194,7 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
     ledRgbGreen.off();
 
     Serial.println("Earth to Sea WebSocket client error");
-    respondToCommand("fl", false, "Earth to Sea WebSocket client error");
+    respondToCommand(FLUTTER, false, "Earth to Sea WebSocket client error");
   }
   else if (type == WStype_PING)
   {
@@ -232,6 +239,7 @@ void handleBluetooth() {
   if (SerialBT.available())
   {
     String btReceived = SerialBT.readStringUntil('\n');
+    delay(10);
 
     if (btReceived.charAt(0) == '#') {
       // it's a command
@@ -258,8 +266,8 @@ void setup()
 {
   // Start the Serial communication to send messages to the computer
   Serial.begin(115200);
-  SerialBT.begin(115200, SERIAL_8N1, BTRX1, BTTX1);
-  delay(500);
+  SerialBT.begin(9600, SERIAL_8N1, BTRX1, BTTX1);
+  delay(250);
 
   // set pinMode
   pinMode(LED_BUILTIN, OUTPUT);
@@ -273,10 +281,10 @@ void setup()
   // So, you have to setup different channels (1-15) for each analog pin
 
   // create leds
-  ledRgbBlue.attach(LED_RGB_BLUE, BLUE, 2);
-  ledRgbRed.attach(LED_RGB_RED, RED, 3);
-  ledRgbGreen.attach(LED_RGB_GREEN, GREEN, 4);
-  ledBack.attach(LED_BACK, UNDEFINED, 5);
+  // ledRgbBlue.attach(LED_RGB_BLUE, BLUE, 2);
+  // ledRgbRed.attach(LED_RGB_RED, RED, 3);
+  // ledRgbGreen.attach(LED_RGB_GREEN, GREEN, 4);
+  // ledBack.attach(LED_BACK, UNDEFINED, 5);
 
   //WiFi.persistent(false);
   // workaround DHCP crash on ESP32 when AP Mode!!!
@@ -285,6 +293,7 @@ void setup()
   //esp_wifi_set_protocol( WIFI_IF_STA, WIFI_PROTOCOL_LR );
 
   WiFi.begin(mySsid, myPassword);
+  delay(250);
 
   // while (WiFi.status() != WL_CONNECTED) {
   //     delay(250);
@@ -295,7 +304,7 @@ void setup()
   // https://github.com/espressif/arduino-esp32/issues/2025#issuecomment-544131287
   //WiFi.softAPConfig(local_ip, gateway, netmask);
 
-  webSocket.enableHeartbeat(pingInterval, pongTimeout, wsTimeoutsBeforeDisconnet);
+  //webSocket.enableHeartbeat(pingInterval, pongTimeout, wsTimeoutsBeforeDisconnet);
   webSocket.begin(WebSocketServerIp, WebSocketServerPort);
   webSocket.onEvent(webSocketEvent);
 
@@ -318,6 +327,7 @@ void loop()
   else
   {
     if ((millis() - previousDisconnectedMillis) > 500) {
+      WiFi.begin(mySsid, myPassword);
       Serial.print("WiFi.status() = ");Serial.println(WiFi.status());
       previousDisconnectedMillis = millis();
       if (ledBuiltInIsOn) {

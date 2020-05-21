@@ -3,7 +3,7 @@ import 'package:control_pad/models/pad_button_item.dart';
 import 'package:control_pad/views/joystick_view.dart';
 import 'package:control_pad/views/pad_button_view.dart';
 
-import '../../utils.dart';
+import '../../models/utils.dart';
 import '../../models/motors_speed.dart';
 
 class DirectionInput extends StatelessWidget {

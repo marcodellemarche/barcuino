@@ -28,7 +28,7 @@ const String EARTH = "ea";
 const String EARTH_BT = "bt";
 
 bool debug = true; // set false to avoid debug serial print
-bool debugSocket = false; // set false to avoid debug serial print
+bool debugSocket = true; // set false to avoid debug serial print
 
 const int MAX_MOTOR_SPEED = 1023;
 const int MIN_MOTOR_SPEED = 250; // sotto questa velocità i motori fischiano ma non si muove
@@ -42,29 +42,52 @@ DeviceAddress tempSensor2 = {0x28, 0xAA, 0xD8, 0xDD, 0x4F, 0x14, 0x01, 0x96};
 
 int tempSensorResolution = 10;
 
-WebServer server;
-WebSocketsServer webSocket = WebSocketsServer(81);
+// Global variables
+String me = SEA;
+String commandSeparator = ";";
+Servo ejectServo;
+AnalogController ledEspOn; //ledRgbRed
+AnalogController ledWifi; //ledRgbBlue
+AnalogController ledWebSocket; //ledRgbGreen
+AnalogController ledBack;
+AnalogController leftMotor;
+AnalogController rightMotor;
+
 int pingInterval = 750;
 int pongTimeout = 500;
 int wsTimeoutsBeforeDisconnet = 0;
 bool isSocketConnected = false;
 
-// Global variables
-String me = SEA;
-String commandSeparator = ";";
-Servo ejectServo;
-AnalogController ledRgbRed;
-AnalogController ledRgbBlue;
-AnalogController ledRgbGreen;
-AnalogController ledBack;
-AnalogController leftMotor;
-AnalogController rightMotor;
+class myWebSocketsServer: public WebSocketsServer {
+  private:
+    unsigned long _previousMillis = 0;
+  public:
+    myWebSocketsServer(uint16_t port, String origin = "", String protocol = "arduino") : WebSocketsServer(port, origin, protocol) {}
 
-unsigned long previousDisconnectedMillis = 0;
+    void loop(void) {
+      if ((millis() - _previousMillis) > 500) {
+        _previousMillis = millis();
+        Serial.print("WSLoop: connectedClients(): ");Serial.println(WebSocketsServer::connectedClients(true));
+      }
+
+      if(!(WebSocketsServer::connectedClients() > 0)) {
+        isSocketConnected = false;
+        if (ledWebSocket.isOn)
+          ledWebSocket.off();
+      }
+      WebSocketsServer::loop();
+    }
+};
+
+WebServer webServer;
+myWebSocketsServer webSocketServer = myWebSocketsServer(81);
+
+unsigned long previousWiFiCheckMillis = 0;
+unsigned long previousMillis = 0;
 
 // WiFiServer wifiServer(80);
 unsigned long previousHealtCheck = 0;
-unsigned long healtCheckTimeout = 1600; // 1 seconds
+unsigned long healtCheckInterval = 1600; // 1 seconds
 bool isHealtCheckTimeoutEnabled = true;
 
 const char *myPassword = "ciaociao";
@@ -192,7 +215,7 @@ void checkHealthCheckTime()
   if (isHealtCheckTimeoutEnabled && previousHealtCheck > 0)
   {
     // don't check if alarm was already triggered or at the startup
-    if (millis() - previousHealtCheck > healtCheckTimeout)
+    if (millis() - previousHealtCheck > healtCheckInterval)
     {
       Serial.println("Websocket is dead! HealtCheck timer triggered.");
 
@@ -206,15 +229,12 @@ void checkHealthCheckTime()
 
 String getStatusString() {
   String result = "status" + commandSeparator;
-  result += "leftMotor" + commandSeparator + String(leftMotor.intensity) + commandSeparator;
-  result += "rightMotor" + commandSeparator + String(rightMotor.intensity) + commandSeparator;
-  result += "ledRgbRed" + commandSeparator + String(ledRgbRed.intensity) + commandSeparator;
-  result += "ledRgbGreen" + commandSeparator + String(ledRgbGreen.intensity) + commandSeparator;
-  result += "ledRgbBlue" + commandSeparator + String(ledRgbBlue.intensity) + commandSeparator;
+  result += "lm" + commandSeparator + String(leftMotor.intensity) + commandSeparator;
+  result += "rm" + commandSeparator + String(rightMotor.intensity) + commandSeparator;
   result += "ledBack" + commandSeparator + String(ledBack.intensity) + commandSeparator;
-  result += "healtCheckTimeout" + commandSeparator + String(healtCheckTimeout) + commandSeparator;
-  result += "isHealtCheckTimeoutEnabled" + commandSeparator + String(isHealtCheckTimeoutEnabled) + commandSeparator;
-  result += "disconnectionCounter" + commandSeparator + String(disconnectionCounter) + commandSeparator;
+  result += "hcInterval" + commandSeparator + String(healtCheckInterval) + commandSeparator;
+  result += "isTimeoutEnabled" + commandSeparator + String(isHealtCheckTimeoutEnabled) + commandSeparator;
+  result += "disconnCounter" + commandSeparator + String(disconnectionCounter) + commandSeparator;
   result += "pingInterval" + commandSeparator + String(pingInterval) + commandSeparator;
   result += "pongTimeout" + commandSeparator + String(pongTimeout) + commandSeparator;
   result += "wsTimeoutsBeforeDisconnet" + commandSeparator + String(wsTimeoutsBeforeDisconnet) + commandSeparator;
@@ -242,7 +262,7 @@ void respondToCommand(uint8_t num, String receiver, bool isOk = true, String mes
   if (debugSocket) {
     Serial.print("-> ");Serial.println(response);
   }
-  webSocket.sendTXT(num, response);
+  webSocketServer.sendTXT(num, response);
 }
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
@@ -252,7 +272,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
     // Save the last time healtcheck was received
     previousHealtCheck = millis();
 
-    ledRgbGreen.on();
+    ledWebSocket.on();
 
     if (!isSocketConnected)
     {
@@ -272,7 +292,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
     // Save the last time healtcheck was received
     previousHealtCheck = millis();
 
-    ledRgbGreen.off();
+    ledWebSocket.off();
 
     isSocketConnected = false;
 
@@ -287,12 +307,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
   {
     // Save the last time healtcheck was received
     previousHealtCheck = millis();
-    
-    ledRgbGreen.off();
 
-    Serial.println("WebSocket client error, stopping motors");
-    stopMotors();
-    respondToCommand(num, FLUTTER, false, "WebSocket client error, stopping motors");
+    Serial.println("WebSocket client error");
+    respondToCommand(num, FLUTTER, false, "WebSocket client error");
   }
   else if (type == WStype_PING)
   {
@@ -366,18 +383,18 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 
           if (type == "green")
           {
-            intensity != -1 ? ledRgbGreen.setIntensity(intensity) : ledRgbGreen.toggle();
-            respondToCommand(num, sender);
+            // intensity != -1 ? ledRgbGreen.setIntensity(intensity) : ledRgbGreen.toggle();
+            // respondToCommand(num, sender);
           }
           else if (type == "red")
           {
-            intensity != -1 ? ledRgbRed.setIntensity(intensity) : ledRgbRed.toggle();
-            respondToCommand(num, sender);
+            // intensity != -1 ? ledRgbRed.setIntensity(intensity) : ledRgbRed.toggle();
+            // respondToCommand(num, sender);
           }
           else if (type == "blue")
           {
-            intensity != -1 ? ledRgbBlue.setIntensity(intensity) : ledRgbBlue.toggle();
-            respondToCommand(num, sender);
+            // intensity != -1 ? ledRgbBlue.setIntensity(intensity) : ledRgbBlue.toggle();
+            // respondToCommand(num, sender);
           }
           else if (type == "back")
           {
@@ -389,7 +406,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
             ledBack.off();
             // ledRgbRed.on(); // used to check start correctly
             // ledRgbGreen.off(); // used to check websocket connectedion
-            ledRgbBlue.off();
+            //ledRgbBlue.off(); // used to check wifi connection
             respondToCommand(num, sender);
           }
           else if (type == "on")
@@ -397,7 +414,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
             ledBack.on();
             // ledRgbRed.on(); // used to check start correctly
             // ledRgbGreen.on(); // used to check websocket connectedion
-            ledRgbBlue.on();
+            //ledRgbBlue.on(); // used to check wifi connection
             respondToCommand(num, sender);
           }
         }
@@ -464,7 +481,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
           }
           else if (newHealtCheckTimeout > 0 && newHealtCheckTimeout <= 25000)
           {
-            healtCheckTimeout = newHealtCheckTimeout;
+            healtCheckInterval = newHealtCheckTimeout;
             isHealtCheckTimeoutEnabled = true;
             respondToCommand(num, sender);
           }
@@ -484,7 +501,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
           int newWsTimeoutsBeforeDisconnet = strWsTimeoutsBeforeDisconnet.toInt(); // value in millis
 
           if (newPingInterval == 0) {
-            webSocket.disableHeartbeat();
+            webSocketServer.disableHeartbeat();
           }
           else if (newPingInterval > 0 && newPingInterval <= 25000 
             && newPongTimeout > 0 && newPongTimeout <= 25000)
@@ -492,7 +509,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
             pingInterval = newPingInterval;
             pongTimeout = newPongTimeout;
             wsTimeoutsBeforeDisconnet = newWsTimeoutsBeforeDisconnet;
-            webSocket.enableHeartbeat(pingInterval, pongTimeout, wsTimeoutsBeforeDisconnet);
+            webSocketServer.enableHeartbeat(pingInterval, pongTimeout, wsTimeoutsBeforeDisconnet);
             respondToCommand(num, sender);
           }
           else
@@ -526,7 +543,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
   }
 }
 
-
 void setup()
 {
   // Start the Serial communication to send messages to the computer
@@ -554,9 +570,9 @@ void setup()
   ejectServo.write(0);
 
   // create leds
-  ledRgbBlue.attach(LED_RGB_BLUE, BLUE, 2);
-  ledRgbRed.attach(LED_RGB_RED, RED, 3);
-  ledRgbGreen.attach(LED_RGB_GREEN, GREEN, 4);
+  ledWifi.attach(LED_RGB_BLUE, BLUE, 2);
+  ledEspOn.attach(LED_RGB_RED, RED, 3);
+  ledWebSocket.attach(LED_RGB_GREEN, GREEN, 4);
   ledBack.attach(LED_BACK, UNDEFINED, 5);
 
   // create motors
@@ -575,16 +591,18 @@ void setup()
   // workaround DHCP crash on ESP32 when AP Mode!!!
   // https://github.com/espressif/arduino-esp32/issues/2025#issuecomment-562848209
   WiFi.mode(WIFI_AP);
-  //esp_wifi_set_protocol( WIFI_IF_STA, WIFI_PROTOCOL_LR );
+  esp_wifi_set_protocol( WIFI_IF_AP, WIFI_PROTOCOL_LR );
+  //esp_wifi_set_max_tx_power(82);
   WiFi.softAP(mySsid, myPassword);
   delay(1000);
+
   // workaround DHCP crash on ESP32 when AP Mode!!! Non servirebbe se funzionasse WiFi.persistent(false)
   // https://github.com/espressif/arduino-esp32/issues/2025#issuecomment-544131287
   WiFi.softAPConfig(local_ip, gateway, netmask);
 
-  webSocket.enableHeartbeat(pingInterval, pongTimeout, wsTimeoutsBeforeDisconnet);
-  webSocket.begin();
-  webSocket.onEvent(webSocketEvent);
+  webSocketServer.enableHeartbeat(pingInterval, pongTimeout, wsTimeoutsBeforeDisconnet);
+  webSocketServer.begin();
+  webSocketServer.onEvent(webSocketEvent);
 
   // server.on("/", []() {
   //   server.send_P(200, "text/html", webpage);
@@ -592,31 +610,44 @@ void setup()
   // server.begin();
 
   // setup finished, switch on red led
-  ledRgbRed.on();
+  ledEspOn.on();
 }
 
 void loop()
 {
+  if ((millis() - previousWiFiCheckMillis) > 500) {
+    previousWiFiCheckMillis = millis();
+    Serial.print("softAPgetStationNum: ");Serial.println(WiFi.softAPgetStationNum());
+    Serial.print("status: ");Serial.println(WiFi.status());
+    wifi_sta_list_t clients;
+    esp_wifi_ap_get_sta_list(&clients);
+    Serial.print("clients.num: ");Serial.println(clients.num);
+    Serial.print("clients.sta[0].rssi: ");Serial.println(clients.sta[0].rssi);
+  }
+
   if (WiFi.softAPgetStationNum() > 0)
   {
-    previousDisconnectedMillis = 0;
+    previousMillis = 0;
 
-    webSocket.loop();
+    webSocketServer.loop();
     // server.handleClient();
 
-    int connectedSocketClients = webSocket.connectedClients();
-    
+    int connectedSocketClients = webSocketServer.connectedClients();
+
+    if(!ledWifi.isOn)
+      ledWifi.on();
+
     if (lastSocketClientCounter != connectedSocketClients) {
       lastSocketClientCounter = connectedSocketClients;
       disconnectionCounter = 0;
       previousHealtCheck = 0;
       if (connectedSocketClients > 0) {
         digitalWrite(LED_BUILTIN, LOW);
-        ledRgbGreen.on();
+        ledWebSocket.on();
       }
       else {
         digitalWrite(LED_BUILTIN, HIGH);
-        ledRgbGreen.off();
+        ledWebSocket.off();
       }
     }
 
@@ -625,20 +656,21 @@ void loop()
   }
   else
   {
-    if ((millis() - previousDisconnectedMillis) > 500) {
-      previousDisconnectedMillis = millis();
-      if (ledRgbBlue.isOn) {
+    if ((millis() - previousMillis) > 500) {
+      Serial.println("No wifi clients connected");
+      previousMillis = millis();
+      if (ledWifi.isOn) {
         digitalWrite(LED_BUILTIN, HIGH);
-        ledRgbBlue.off();
+        ledWifi.off();
       }
       else {
         digitalWrite(LED_BUILTIN, LOW);
-        ledRgbBlue.on();
+        ledWifi.on();
       }
     }
 
     // websocket check led
-    if (ledRgbGreen.isOn)
-      ledRgbGreen.off();
+    if (ledWebSocket.isOn)
+      ledWebSocket.off();
   }
 }

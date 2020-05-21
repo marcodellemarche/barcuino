@@ -2,7 +2,7 @@ import 'package:barkino/models/settings.dart';
 import 'package:flutter/material.dart';
 import 'package:preferences/preferences.dart';
 
-import '../utils.dart';
+import '../models/utils.dart';
 
 class SettingsScreen extends StatefulWidget {
   final Function onSettingChanged;

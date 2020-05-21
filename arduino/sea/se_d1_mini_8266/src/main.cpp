@@ -57,7 +57,7 @@ AnalogController ledBack;
 AnalogController leftMotor;
 AnalogController rightMotor;
 
-unsigned long previousDisconnectedMillis = 0;
+unsigned long previousMillis = 0;
 
 // WiFiServer wifiServer(80);
 unsigned long previousHealtCheck = 0;
@@ -255,7 +255,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
     {
       Serial.println("WebSocket client connected.");
       isSocketConnected = true;
-      respondToCommand(num, FLUTTER , true, "Hi! My name is Barkino.");
+      respondToCommand(num, FLUTTER, true, "Hi! My name is Barkino.");
       delay(20);
       respondToCommand(num, FLUTTER, true, getStatusString());
     }
@@ -285,7 +285,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
     // Save the last time healtcheck was received
     previousHealtCheck = millis();
     
-    ledRgbGreen.off();
+    //ledRgbGreen.off();
 
     Serial.println("WebSocket client error, stopping motors");
     stopMotors();
@@ -386,7 +386,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
             ledBack.off();
             // ledRgbRed.on(); // used to check start correctly
             // ledRgbGreen.off(); // used to check websocket connectedion
-            ledRgbBlue.off();
+            //ledRgbBlue.off();
             respondToCommand(num, sender);
           }
           else if (type == "on")
@@ -394,7 +394,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
             ledBack.on();
             // ledRgbRed.on(); // used to check start correctly
             // ledRgbGreen.on(); // used to check websocket connectedion
-            ledRgbBlue.on();
+            //ledRgbBlue.on();
             respondToCommand(num, sender);
           }
         }
@@ -592,13 +592,16 @@ void loop()
 {
   if (WiFi.softAPgetStationNum() > 0)
   {
-    previousDisconnectedMillis = 0;
+    previousMillis = 0;
 
     webSocket.loop();
     // server.handleClient();
 
     int connectedSocketClients = webSocket.connectedClients();
-    
+
+    if(!ledRgbBlue.isOn)
+      ledRgbBlue.on();
+
     if (lastSocketClientCounter != connectedSocketClients) {
       lastSocketClientCounter = connectedSocketClients;
       disconnectionCounter = 0;
@@ -618,8 +621,9 @@ void loop()
   }
   else
   {
-    if ((millis() - previousDisconnectedMillis) > 500) {
-      previousDisconnectedMillis = millis();
+    if ((millis() - previousMillis) > 500) {
+      Serial.println("No wifi clients connected");
+      previousMillis = millis();
       if (ledRgbBlue.isOn) {
         digitalWrite(LED_BUILTIN, HIGH);
         ledRgbBlue.off();

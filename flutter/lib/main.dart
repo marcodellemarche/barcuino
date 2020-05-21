@@ -12,8 +12,8 @@ import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 
 import './models/settings.dart';
 import './screens/settings_screen.dart';
-import './websockets.dart';
-import './utils.dart';
+import './models/websockets_notifications.dart';
+import './models/utils.dart';
 import './widgets/direction/direction_controller.dart';
 import './widgets/log_messages.dart';
 import './widgets/temperature.dart';
@@ -57,6 +57,7 @@ class _MyHomePageState extends State<MyHomePage> {
   //int wsServerPort = 81;
   static bool _isSocketConnected = false;
   static bool _isBtConnected = false;
+  static int earthToSeaRssi = 0;
   bool _isPasturaEjected = false;
   bool _isLedOn = false;
   bool _isAdjstmentDisabled = true;
@@ -82,36 +83,53 @@ class _MyHomePageState extends State<MyHomePage> {
   // bt data trick
   List<int> _btIncomingBuffer = List<int>();
 
-  // // set as static objects to avoid re-building on each timer trigger
-  // DirectionController joystick = DirectionController(
-  //   onDirectionChanged: _onDirectionChanged,
-  //   controllerType: 0,
-  //   adjustmentsDisabled: _isAdjstmentDisabled,
-  // );
-
-  // DirectionController pad = DirectionController(
-  //   onDirectionChanged: _onDirectionChanged,
-  //   controllerType: 1,
-  //   adjustmentsDisabled: _isAdjstmentDisabled,
-  // );
-
   void _onBtData(Uint8List data) {
     _btIncomingBuffer += data;
     // If there is a sample, and it is full received
-    bool isStringEnd = (_btIncomingBuffer.contains('\n'.codeUnitAt(0)) ||
-        _btIncomingBuffer.contains('\r'.codeUnitAt(0)));
+    int indexOfStringEnd = _btIncomingBuffer.indexOf('\n'.codeUnitAt(0));
 
-    if (isStringEnd) {
-      _btIncomingBuffer.removeWhere((int char) {
-        return (char == '\n'.codeUnitAt(0) || char == '\r'.codeUnitAt(0));
-      });
-      String btDataReceived = ascii.decode(_btIncomingBuffer);
+    if (indexOfStringEnd > 0) {
+      List<List<int>> buffersSplitted = List<List<int>>();
+
+      // splitta il buffer in sotto liste
+      int lastFound = 0;
+      for (var i = 0; i < _btIncomingBuffer.length; i++) {
+        if (_btIncomingBuffer[i] == '\n'.codeUnitAt(0)) {
+          buffersSplitted.add(_btIncomingBuffer.sublist(lastFound, i + 1));
+          lastFound = i + 1;
+        }
+      }
+
+      // pulisci il buffer
       _btIncomingBuffer.clear();
-      _onMessageReceived(btDataReceived);
+
+      // se l'ultima sotto lista non termina con '\n', usala come inizio del prossimo buffer
+      if (buffersSplitted.last.last != '\n'.codeUnitAt(0))
+        _btIncomingBuffer = buffersSplitted.removeLast();
+
+      buffersSplitted.forEach((buffer) {
+        buffer.removeWhere((char) {
+          return (char == '\n'.codeUnitAt(0) || char == '\r'.codeUnitAt(0));
+        });
+        String btDataReceived = ascii.decode(buffer);
+        if (btDataReceived.length > 4) _onMessageReceived(btDataReceived);
+      });
+    }
+
+    if (_btIncomingBuffer.length > 700) {
+      // something wrong, clear buffer
+      int lastEndCharIndex = _btIncomingBuffer.lastIndexOf('\n'.codeUnitAt(0));
+      if (lastEndCharIndex > 0)
+        _btIncomingBuffer = _btIncomingBuffer.sublist(lastEndCharIndex + 1);
+      else
+        _btIncomingBuffer.clear();
     }
   }
 
-  Future<void> _btConnect({BluetoothDevice device, String fixedAddress}) async {
+  Future<void> _btConnect(
+      {BluetoothDevice device,
+      String fixedAddress,
+      bool forced = false}) async {
     if (connection == null) {
       try {
         if (device != null)
@@ -128,16 +146,9 @@ class _MyHomePageState extends State<MyHomePage> {
             _isBtConnected = false;
           });
         });
-
       } catch (exception) {
-        _forceBtReconnection();
-        return;
-        print(exception.toString());
-        setState(() {
-          logMessages.add(
-              'Cannot connect BT, exception occured: ${exception.toString()}');
-          _isBtConnected = false;
-        });
+        if (!forced) _forceBtReconnection();
+        setState(() => _isBtConnected = false);
       }
     } else {
       if (connection.isConnected) {
@@ -146,21 +157,18 @@ class _MyHomePageState extends State<MyHomePage> {
           _isBtConnected = true;
         });
       } else {
-        setState(() {
-          connection.finish();
-          _forceBtReconnection();
-          return;
-          logMessages.add('bt not connected, but connection object != null');
-          _isBtConnected = false;
-        });
+        if (!forced) _forceBtReconnection();
+        setState(() => _isBtConnected = false);
       }
     }
   }
 
   Future<void> _forceBtReconnection() async {
     await FlutterBluetoothSerial.instance.requestDisable();
+    connection.dispose();
+    connection = null;
     await FlutterBluetoothSerial.instance.requestEnable();
-    _btConnect(fixedAddress: btDeviceAddress);
+    _btConnect(fixedAddress: btDeviceAddress, forced: true);
   }
 
   void _onBtConnectionSuccess() {
@@ -355,6 +363,13 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  String parseValueReceived(List<String> receivedCommands, String key) {
+    String value;
+    int indexOfValue = receivedCommands.indexOf(key);
+    if (indexOfValue > 0) value = receivedCommands[indexOfValue + 1];
+    return value;
+  }
+
   void _stopAutoReconnectSocket() {
     if (_autoReconnectTimer != null) _autoReconnectTimer.cancel();
   }
@@ -379,24 +394,41 @@ class _MyHomePageState extends State<MyHomePage> {
         if (sender == DeviceName.SEA) {
           // Arduino Sea
           if (receivedCommands[0] == "ok") {
-            // is an ok response to last command
-            bool atLeastOneCommand = false;
+            // is ok command
+            if (receivedCommands[1] == "status") {
+              // is response tu status command
+              String value;
 
-            if (receivedCommands.contains("temp")) {
-              atLeastOneCommand = true;
-              int indexOfValue = receivedCommands.indexOf("temp") + 1;
-              String value = receivedCommands[indexOfValue];
-              setState(() => _temperature = double.tryParse(value));
-            }
-
-            if (!atLeastOneCommand) {
-              String command = receivedCommands[1];
-              if (command.isNotEmpty) {
-                setState(() => logMessages.add(command));
-                snackBarContent = 'Arduino response: ' + command;
-              } else {
-                snackBarContent = 'Arduino response: ok';
+              value = parseValueReceived(receivedCommands, "temp");
+              if (value.isNotEmpty) {
+                _temperature = double.tryParse(value);
               }
+
+              value = parseValueReceived(receivedCommands, "lm");
+              if (value.isNotEmpty) {
+                // todo
+              }
+
+              value = parseValueReceived(receivedCommands, "rm");
+              if (value.isNotEmpty) {
+                // todo
+              }
+
+              value = parseValueReceived(receivedCommands, "rssi");
+              if (value.isNotEmpty) {
+                earthToSeaRssi = int.parse(value);
+                print('rssiRaw $value');
+              }
+
+              setState(() {});
+            } else {
+              if (receivedCommands.length > 1 &&
+                  receivedCommands[1].isNotEmpty) {
+                String commandAfterOk = receivedCommands[1];
+                setState(() => logMessages.add(commandAfterOk));
+                snackBarContent = 'Arduino response: ' + commandAfterOk;
+              } else
+                snackBarContent = 'Arduino response: ok';
             }
           } else if (receivedCommands[0] == "er") {
             // is an error response to last command
@@ -695,11 +727,14 @@ class _MyHomePageState extends State<MyHomePage> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: <Widget>[
                   RaisedButton(
-                    child: const Text(
-                      'BT Connect',
-                      style: TextStyle(color: Colors.white, fontSize: 20.0),
+                    child: Text(
+                      !_isBtConnected ? 'BT Connect' : 'BT Connected',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20.0,
+                      ),
                     ),
-                    color: Colors.blue,
+                    color: !_isBtConnected ? Colors.blue : Colors.green,
                     onPressed: () async {
                       // final BluetoothDevice selectedDevice =
                       //     await Navigator.of(context).push(
@@ -722,31 +757,26 @@ class _MyHomePageState extends State<MyHomePage> {
                       _btConnect(fixedAddress: btDeviceAddress);
                     },
                   ),
-                  RaisedButton(
-                      child: const Text(
-                        'BT List',
-                        style: TextStyle(color: Colors.white, fontSize: 20.0),
+                  Card(
+                    elevation: 5,
+                    margin: EdgeInsets.all(10),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 10,
                       ),
-                      color: Colors.blue,
-                      onPressed: () async {
-                        final BluetoothDevice selectedDevice =
-                            await Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) {
-                              return DiscoveryPage();
-                            },
+                      child: Row(
+                        children: <Widget>[
+                          Text(
+                            'rssi: ${_isBtConnected ? earthToSeaRssi.toString() : "-"}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        );
-
-                        if (selectedDevice != null) {
-                          print('Discovery -> selected ' +
-                              selectedDevice.address);
-                          _btConnect(device: selectedDevice);
-                        } else {
-                          print('Discovery -> no device selected');
-                          _btConnect(fixedAddress: btDeviceAddress);
-                        }
-                      }),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
               Row(

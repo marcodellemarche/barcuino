@@ -87,7 +87,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       TextFieldPreference(
                         'Timer in millisecondi',
                         'statusTimer',
-                        defaultVal: Settings.arduinoTimeout.toString(),
+                        defaultVal: Settings.statusTimer.toString(),
                         keyboardType: TextInputType.numberWithOptions(
                           decimal: false,
                           signed: false,

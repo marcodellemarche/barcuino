@@ -31,8 +31,8 @@ const String SEA = "se";
 const String EARTH = "ea";
 const String EARTH_BT = "bt";
 
-bool debug = true; // set false to avoid debug serial print
-bool debugSocket = true; // set false to avoid debug serial print
+bool debug = false; // set false to avoid debug serial print
+bool debugSocket = false; // set false to avoid debug serial print
 
 const int MAX_MOTOR_SPEED = 1023;
 const int MIN_MOTOR_SPEED = 250; // sotto questa velocità i motori fischiano ma non si muove
@@ -127,6 +127,7 @@ void sendToSerialBt(String message) {
     if (!message.endsWith("\n"))
       message += '\n';
     SerialBT.print(message);
+    delay(10);
 }
 
 void sendToWebSocket(String message) {
@@ -283,6 +284,7 @@ void handleBluetooth() {
   if (SerialBT.available())
   {
     String btReceived = SerialBT.readStringUntil('\n');
+    delay(10);
 
     if (btReceived.charAt(0) == '#') {
       // it's a command
@@ -315,7 +317,7 @@ void setup()
 {
   // Start the Serial communication to send messages to the computer
   Serial.begin(115200);
-  SerialBT.begin(115200, SERIAL_8N1, BTRX1, BTTX1);
+  SerialBT.begin(57600, SERIAL_8N1, BTRX1, BTTX1);
   delay(250);
 
   // set pinMode

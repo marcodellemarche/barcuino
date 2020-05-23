@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:wifi_configuration/wifi_configuration.dart';
 
 enum ConfirmAction { cancel, accept }
+enum SnackBarType { normal, error, warning }
 
 class DeviceName {
   static const FLUTTER = "fl";
@@ -25,22 +26,43 @@ class Utils {
     scaffoldKey.currentState.removeCurrentSnackBar();
   }
 
-  static snackBarMessage({
-    @required String snackBarContent,
-    @required GlobalKey<ScaffoldState> scaffoldKey,
-    Color backgroundColor,
-    bool removeCurrentSnackBar = false
-  }) {
-    if (removeCurrentSnackBar)
-      scaffoldKey.currentState.removeCurrentSnackBar();
+  static snackBarMessage(
+      {@required String snackBarContent,
+      @required GlobalKey<ScaffoldState> scaffoldKey,
+      SnackBarType type = SnackBarType.normal,
+      bool removeCurrentSnackBar = false}) {
+    if (removeCurrentSnackBar) scaffoldKey.currentState.removeCurrentSnackBar();
+
+    Color bgColor;
+    Color textColor;
+    Color closeTextColor;
+    switch (type) {
+      case SnackBarType.error:
+        bgColor = Colors.red;
+        textColor = Colors.white;
+        closeTextColor = Colors.white70;
+        break;
+      case SnackBarType.warning:
+        bgColor = Colors.yellow;
+        textColor = Colors.black;
+        closeTextColor = Colors.black;
+        break;
+      default:
+    }
 
     if (snackBarContent != null) {
       SnackBar snackBar = SnackBar(
-        content: Text(snackBarContent),
+        content: Text(
+          snackBarContent,
+          style: TextStyle(
+            color: textColor,
+          ),
+        ),
         duration: Duration(seconds: 1),
-        backgroundColor: backgroundColor != null ? backgroundColor : null,
+        backgroundColor: bgColor,
         action: SnackBarAction(
           label: 'Close',
+          textColor: closeTextColor,
           onPressed: () {
             scaffoldKey.currentState.removeCurrentSnackBar();
           },

@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 
 class Led extends StatelessWidget {
+  final int width;
 
   const Led({
     Key key,
     this.color = const Color(0xFF000000),
+    this.width = 50
   }) : super(key: key);
 
   final Color color;
@@ -13,8 +15,8 @@ class Led extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return new Container(
-      width: 50,
-      height: 50,
+      width: width.toDouble(),
+      height: width.toDouble(),
       decoration: new BoxDecoration(
         gradient: new RadialGradient(
           colors: [this.color, Color.fromRGBO(this.color.red -20, this.color.green - 20, this.color.blue - 20, 1)], //new Color.fromRGBO(168, 0, 0, 1)],

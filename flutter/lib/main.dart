@@ -466,12 +466,12 @@ class _MyHomePageState extends State<MyHomePage> {
 
               value = parseValueReceived(receivedCommands, "lm");
               if (value.isNotEmpty) {
-                // todo
+                MotorsSpeed.actualLeft = int.tryParse(value);
               }
 
               value = parseValueReceived(receivedCommands, "rm");
               if (value.isNotEmpty) {
-                // todo
+                MotorsSpeed.actualRight = int.tryParse(value);
               }
 
               value = parseValueReceived(receivedCommands, "rssi");
@@ -490,15 +490,15 @@ class _MyHomePageState extends State<MyHomePage> {
               } else
                 snackBarContent = 'Arduino response: ok';
             }
-          } else if (receivedCommands[0] == "er") {
+          } else if (receivedCommands[0] == "error") {
             // is an error response to last command
             // TODO
             snackBarContent = 'ERROR! Arduino response: ' + rawCommands;
             snackBarType = SnackBarType.error;
-            setState(() => logMessages.add(rawCommands));
+            setState(() => logMessages.add('Error: ' + rawCommands));
           } else {
             // unknown message
-            setState(() => logMessages.add(rawCommands));
+            setState(() => logMessages.add('Unknown command: ' + rawCommands));
           }
         } else if (sender == DeviceName.EARTH) {
           // Arduino earth
@@ -511,7 +511,7 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     } else {
       // unknown message type
-      setState(() => logMessages.add(message));
+      setState(() => logMessages.add('Unknown: ' + message));
     }
 
     if (snackBarContent != null) {
@@ -959,14 +959,28 @@ class _MyHomePageState extends State<MyHomePage> {
                                 SensorCard(
                                   value: _temperature,
                                   text: "Temperatura",
+                                  flex: 6,
                                 ),
-                                Container(
-                                  constraints: BoxConstraints(maxWidth: 140),
-                                  child: SensorCard(
-                                    value: _earthToSeaRssi,
-                                    text: "rssi",
-                                  ),
-                                )
+                                SensorCard(
+                                  value: _earthToSeaRssi,
+                                  text: "rssi",
+                                  flex: 4
+                                ),
+                              ],
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: <Widget>[
+                                SensorCard(
+                                  value: MotorsSpeed.actualLeft,
+                                  text: "Motore SX",
+                                  small: true,
+                                ),
+                                SensorCard(
+                                  value: MotorsSpeed.actualRight,
+                                  text: "Motore DX",
+                                  small: true,
+                                ),
                               ],
                             ),
                             LogMessages(

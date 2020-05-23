@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 class SensorCard extends StatelessWidget {
   final value;
   final text;
+  final bool small;
+  final int flex;
 
-  SensorCard({this.value, this.text});
+  SensorCard({this.value, this.text, this.small = false, this.flex = 1});
 
   @override
   Widget build(BuildContext context) {
@@ -12,39 +14,42 @@ class SensorCard extends StatelessWidget {
       " ${value != null ? value.toString() : "--"}",
       style: TextStyle(
         color: Colors.black,
-        fontSize: 20.0,
+        fontSize: !small ? 20.0 : 15,
       ),
       textAlign: TextAlign.center,
     );
 
-    return Expanded(
-      child: Card(
-        elevation: 5,
-        margin: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 10,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.max,
-            children: <Widget>[
-              Container(
-                child: Text(
-                  "$text:",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
+    final card = Card(
+      elevation: !small ? 5 : 3,
+      margin: EdgeInsets.symmetric(horizontal: 10, vertical: !small ? 5 : 1),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: !small ? 10 : 5,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.max,
+          children: <Widget>[
+            Container(
+              child: Text(
+                "$text:",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              Expanded(
-                child: _valueText,
-              ),
-            ],
-          ),
+            ),
+            Expanded(
+              child: _valueText,
+            )
+          ],
         ),
       ),
+    );
+
+    return Expanded(
+      child: card,
+      flex: flex,
     );
   }
 }

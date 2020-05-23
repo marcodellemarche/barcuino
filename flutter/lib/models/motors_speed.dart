@@ -9,6 +9,9 @@ class MotorsSpeed {
   static int _left = 0;
   static int _right = 0;
 
+  static int actualLeft = 0;
+  static int actualRight = 0;
+
   static bool _adjustmentEnabled = true;
 
   // 0.0 to 1.0

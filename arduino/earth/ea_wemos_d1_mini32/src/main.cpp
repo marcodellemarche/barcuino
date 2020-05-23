@@ -173,7 +173,9 @@ void spreadMessage(String receiver, String rawMessage) {
       // append connection status data before spread
       rawMessage = appendStatusString(rawMessage);
     }
-    Serial.print("bt to Flutter: ");Serial.println(rawMessage);
+    if (debug) {
+      Serial.print("bt to Flutter: ");Serial.println(rawMessage);
+    }
     sendToSerialBt(rawMessage);
   } else if (receiver == EARTH_BT) {
     SerialBT.print(rawMessage);
@@ -225,7 +227,6 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
     respondToCommand(FLUTTER, false, "wsDisconnected");
 
     // due to some connection errors, autoresolved with auto-reconnect, I don't stop motors suddenly
-    //stopMotors();
   }
   else if (type == WStype_ERROR)
   {
@@ -265,8 +266,10 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
       // fl -> Flutter app
       String sender = wsReceived.substring(1, 3);
       String receiver = wsReceived.substring(3, 5);
-      // Serial.print("ws: ");Serial.print(sender);Serial.print("->");Serial.print(receiver);
-      // Serial.print(" ");Serial.println(wsReceived);
+      if(debugSocket) {
+        Serial.print("ws: ");Serial.print(sender);Serial.print("->");Serial.print(receiver);
+        Serial.print(" ");Serial.println(wsReceived);
+      }
       if (receiver != me) {
         spreadMessage(receiver, wsReceived);
       } else {
@@ -292,8 +295,10 @@ void handleBluetooth() {
       String sender = btReceived.substring(1, 3);
       String receiver = btReceived.substring(3, 5);
 
-      Serial.print("bt: ");Serial.print(sender);Serial.print("->");Serial.print(receiver);
-      Serial.print(" ");Serial.println(btReceived);
+      if (debug) {
+        Serial.print("bt: ");Serial.print(sender);Serial.print("->");Serial.print(receiver);
+        Serial.print(" ");Serial.println(btReceived);
+      }
 
       if (receiver != me) {
         spreadMessage(receiver, btReceived);
@@ -310,7 +315,7 @@ void setup()
 {
   // Start the Serial communication to send messages to the computer
   Serial.begin(115200);
-  SerialBT.begin(9600, SERIAL_8N1, BTRX1, BTTX1);
+  SerialBT.begin(115200, SERIAL_8N1, BTRX1, BTTX1);
   delay(250);
 
   // set pinMode
@@ -339,11 +344,6 @@ void setup()
 
   WiFi.begin(mySsid, myPassword);
   delay(250);
-
-  // while (WiFi.status() != WL_CONNECTED) {
-  //     delay(250);
-  //     Serial.print(".");
-  // }
 
   // workaround DHCP crash on ESP32 when AP Mode!!! Non servirebbe se funzionasse WiFi.persistent(false)
   // https://github.com/espressif/arduino-esp32/issues/2025#issuecomment-544131287
@@ -379,14 +379,12 @@ void loop()
     if (!isSocketConnected) {
       if ((millis() - previousLoopMillis) > 500) {
         if (!ledStatus.isOn) {
-          Serial.println("on");
           previousLoopMillis = millis();        
           ledStatus.on();
           // webSocket.begin(WebSocketServerIp, WebSocketServerPort);
           // webSocket.onEvent(webSocketEvent);
         }
         else {
-          Serial.println("off");
           ledStatus.off();
         }
       }
@@ -400,7 +398,9 @@ void loop()
   {
     if ((millis() - previousLoopMillis) > 1000) {
       WiFi.begin(mySsid, myPassword);
-      Serial.print("WiFi.status() = ");Serial.println(WiFi.status());
+      if (debug) {
+        Serial.print("WiFi.status() = ");Serial.println(WiFi.status());
+      }
       previousLoopMillis = millis();
       if (ledBuiltInIsOn) {
         ledBuiltInIsOn = false;

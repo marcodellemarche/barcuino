@@ -215,7 +215,7 @@ void checkHealthCheckTime()
   if (isHealtCheckTimeoutEnabled && previousHealtCheck > 0)
   {
     // don't check if alarm was already triggered or at the startup
-    if (millis() - previousHealtCheck > healtCheckInterval)
+    if ((millis() - previousHealtCheck) > healtCheckInterval)
     {
       Serial.println("Websocket is dead! HealtCheck timer triggered.");
 
@@ -299,9 +299,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
     disconnectionCounter++;
 
     Serial.print("WebSocket client disconnection: ");Serial.println(disconnectionCounter);
-
-    // due to some connection errors, autoresolved with auto-reconnect, I don't stop motors suddenly
-    //stopMotors();
   }
   else if (type == WStype_ERROR)
   {
